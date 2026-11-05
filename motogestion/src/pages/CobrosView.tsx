@@ -619,6 +619,20 @@ function calcProtocoloStep(dias: number, recolectable: boolean, motoGuardada: bo
   return { paso: 4, label: "RECOLECCION FISICA", color: "var(--card)", bg: "var(--bad-ink2)", accionRecomendada: "recoleccion" };
 }
 
+/** Agrupa filas por `contrato_id` conservando el orden en que llegan. Nadie modifica las listas
+ *  que devuelve: se leen, se filtran o se copian. */
+function agruparPorContrato<T extends { contrato_id?: string | null }>(filas: T[]): Map<string, T[]> {
+  const grupos = new Map<string, T[]>();
+  for (const f of filas) {
+    if (!f.contrato_id) continue;
+    const lista = grupos.get(f.contrato_id);
+    if (lista) lista.push(f);
+    else grupos.set(f.contrato_id, [f]);
+  }
+  return grupos;
+}
+const SIN_FILAS: never[] = [];
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CobrosView({ initialOpenForm = false, onNavigate, puedeHistorial = true, initialFilter = "" }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void; puedeHistorial?: boolean;
   /** Abrir Cartera ya filtrada desde otra pantalla (Reportes, 2-oct-2026). Formato: "contratos:mora",
@@ -631,9 +645,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { pagos, loading: loadingPagos, error: errorPagos, recargar: recargarPagos, registrarPago, leerReparto, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
   const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
-  const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  // `filtrarContratos` se crea de nuevo en cada render y al SUBADMIN le devuelve una lista nueva
+  // cada vez: sin este useMemo, toda la cuenta de la cartera se rehacía con cada movimiento de la
+  // pantalla. Su resultado depende solo de la lista, de las motos (de quién es cada una) y de
+  // quién entró.
+  const contratos = useMemo(
+    () => filtrarContratos(todosContratos),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [todosContratos, motos, profile?.id, profile?.role],
+  );
   // Los préstamos de reemplazo también dejan la moto guardada (caso IEW64I, 3-sep): sin esto el
   // tiempo sin resolver de un préstamo no aparecía por ningún lado.
   const { prestamos } = usePrestamos();
@@ -847,7 +869,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // cuentas, porque de eso depende que recupere la moto. Los suspendidos quedan marcados y NO
   // entran a las listas de trabajo del día (ver `operativos`): a quien ya le quitaron la moto no
   // se le sale a cobrar.
-  const contratosActivos = contratos.filter(c => c.estado === "Activo" || c.estado === "Suspendido");
+  const contratosActivos = useMemo(
+    () => contratos.filter(c => c.estado === "Activo" || c.estado === "Suspendido"),
+    [contratos],
+  );
+
+  // Índices por contrato (4-nov-2026, queja de lentitud). Antes cada contrato buscaba sus pagos,
+  // gestiones y deudas recorriendo las listas COMPLETAS (5.354 pagos y 5.383 gestiones), varias
+  // veces por pantalla: medido en la vista de celular, abrir Cartera congelaba la pantalla 8 s y
+  // tres letras en el buscador, 4 s. Se arman una vez cuando cambia el dato y cada lista conserva
+  // el orden original, así que `[0]`, `filter` y las sumas dan exactamente lo mismo que antes.
+  const pagosPorContrato = useMemo(() => agruparPorContrato(pagos), [pagos]);
+  const gestionesPorContrato = useMemo(() => agruparPorContrato(gestiones), [gestiones]);
+  const deudasPendPorContrato = useMemo(() => agruparPorContrato(deudas.filter(d => d.estado === "pendiente")), [deudas]);
+  const motoPorId = useMemo(() => new Map(motos.map(m => [m.id, m])), [motos]);
+  // El día entra en la cuenta (mora, gabela, prorrateo): si la app queda abierta de un día para
+  // otro, el resumen se rehace con la fecha nueva en el primer movimiento.
+  const hoyClave = hoyISO();
 
   // ── Resumen por contrato ──────────────────────────────────────────────────
   const resumenContratos = useMemo(() => {
@@ -859,21 +897,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     inicioSemana.setHours(0, 0, 0, 0);
 
     return contratosActivos.map(contrato => {
-      const todosPagos = pagos.filter(p => p.contrato_id === contrato.id);
+      const todosPagos = pagosPorContrato.get(contrato.id) ?? SIN_FILAS;
       const confirmados = todosPagos.filter(p => p.estado === "Confirmado");
       const pendientes = todosPagos.filter(p => p.estado === "Pendiente");
 
       // Solo deuda EXIGIBLE directa (pendiente). Las 'en_convenio' se pagan vía la cuota
       // del convenio — sumarlas aquí las cobraría DOBLE (deuda + convenio a la vez).
-      const deudaContrato = deudas
-        .filter(d => d.contrato_id === contrato.id && d.estado === "pendiente")
+      const deudaContrato = (deudasPendPorContrato.get(contrato.id) ?? SIN_FILAS)
         .reduce((acc, d) => acc + d.monto_pendiente, 0);
 
       const ultimoPagoFecha = [...confirmados].sort((a,b) => b.fecha.localeCompare(a.fecha))[0]?.fecha ?? null;
       // Sin pagos nunca pero con deuda pendiente (ej. saldo de apertura migrado) → el reloj de mora
       // arranca desde la entrega (topado al corte de migración), no desde el sentinel 999 (reservado
       // para contratos genuinamente nuevos sin deuda). Evita que Recolección los ignore para siempre.
-      const grupoMoto = motos.find(m => m.id === contrato.moto_id)?.grupo ?? null;
+      const grupoMoto = (contrato.moto_id ? motoPorId.get(contrato.moto_id)?.grupo : null) ?? null;
       // Antes esto exigía además `deudaContrato > 0`, y por eso el cliente que recibe la moto
       // y NUNCA paga una sola cuota (sin deuda registrada) quedaba en 999 para siempre: la
       // lista de Contratos le ponía "P4: Recolección física" pero jamás entraba al grupo de
@@ -885,7 +922,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         : contrato.fecha_entrega
           ? (diasDesdeUltimoPago(null, contrato.fecha_entrega, corteMigracionContrato(contrato, grupoMoto)) ?? 999)
           : 999;
-      const ultimaGestion = gestiones.filter(g => g.contrato_id === contrato.id)[0] ?? null;
+      const ultimaGestion = (gestionesPorContrato.get(contrato.id) ?? SIN_FILAS)[0] ?? null;
 
       const pagadoEstaSemana = confirmados
         .filter(p => new Date(p.fecha + "T00:00:00") >= inicioSemana)
@@ -909,7 +946,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // abonado su cuota en semanas anteriores salía EN MORA con $0 de deuda, y entraba a la
       // cola de recolección. (DANIEL MILLAN, RLT87H: $61.000 abonados contra $33.500 de cuota.)
       // D-026: con sus deudas, para las semanas de más (ya llenó todas y todavía debe).
-      const deudasPend = deudas.filter(d => d.contrato_id === contrato.id && d.estado === "pendiente");
+      const deudasPend = (deudasPendPorContrato.get(contrato.id) ?? SIN_FILAS).slice();
       const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar, deudasPend);
       // Días que lleva VENCIDA la cuota — distinto de `diasSinPago` (que un abono parcial reinicia).
       // Los mensajes de mora y recolección llevan las dos cifras, cada una con su palabra.
@@ -942,7 +979,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         suspendido: contrato.estado === "Suspendido",
       };
     });
-  }, [contratosActivos, pagos, deudas, convenios]);
+    // Antes faltaban las gestiones y las motos en esta lista y no se notaba porque el resumen se
+    // rehacía en cada render. `convenioPorCobrarDelContrato` no va: solo lee `convenios`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratosActivos, pagosPorContrato, deudasPendPorContrato, gestionesPorContrato, motoPorId, convenios, hoyClave]);
 
   // ── Helpers para el detalle del recibo ──────────────────────────────────────
   // Fuente ÚNICA de "cuánto debe AHORA" (lista, Panel Hoy, cobro en campo, recibos). Para
@@ -951,11 +991,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Todo lo que un contrato debe HOY, desglosado. Pasa por `loQueDebe` (cicloPago) — la fuente
   // ÚNICA — para que la lista, el detalle, el recibo y Cobro Diario no puedan discrepar. Antes
   // esta cuenta estaba escrita acá y en otros nueve sitios que se fueron separando.
+  // La cuenta de cada contrato se hace UNA vez por versión del resumen. La lista, el panel Hoy, el
+  // orden de Empalme y el detalle la piden muchas veces por pantalla, y antes la rehacían cada vez.
+  // El resumen se rehace cuando cambia cualquier dato que entra en la cuenta (pagos, deudas,
+  // acuerdos, el día); entonces cada fila es un objeto nuevo y lo guardado antes ya no se encuentra.
+  const desgloseGuardado = useMemo(() => new WeakMap<object, LoQueDebe>(), [resumenContratos]);
   function desgloseDebe(c: typeof resumenContratos[number]): LoQueDebe {
-    return loQueDebe(
+    const guardado = desgloseGuardado.get(c);
+    if (guardado) return guardado;
+    const desglose = loQueDebe(
       c,
-      pagosDelContrato(c.id).filter(p => p.estado === "Confirmado"),
-      deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"),
+      (pagosPorContrato.get(c.id) ?? SIN_FILAS).filter(p => p.estado === "Confirmado"),
+      (deudasPendPorContrato.get(c.id) ?? SIN_FILAS).slice(),
       c.convenioACobrar,
       hoyDate(),
       {
@@ -969,6 +1016,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           : undefined,
       },
     );
+    desgloseGuardado.set(c, desglose);
+    return desglose;
   }
 
   function calcularPendienteContrato(c: typeof resumenContratos[number]): number {
@@ -1018,8 +1067,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
   // ── Panel HOY: tareas del día agrupadas por urgencia (sin duplicar) ─────────
   const hoyISOPanel = hoyISO();
+  // Lo que ya se hizo hoy, apuntado una vez: el panel Hoy lo pregunta por cada tarjeta, por cada
+  // botón y al ordenar, y antes cada pregunta recorría las 5.383 gestiones.
+  const gestionesDeHoy = useMemo(() => {
+    const hechas = new Set<string>();
+    for (const g of gestiones) if (g.fecha === hoyISOPanel) hechas.add(`${g.contrato_id}|${g.tipo}`);
+    return hechas;
+  }, [gestiones, hoyISOPanel]);
   function gestionHechaHoy(contratoId: string, tipo: TipoGestion): boolean {
-    return gestiones.some(g => g.contrato_id === contratoId && g.tipo === tipo && g.fecha === hoyISOPanel);
+    return gestionesDeHoy.has(`${contratoId}|${tipo}`);
   }
 
   // Antes de recolectar, el protocolo exige haber intentado (sin respuesta) mensaje, llamada
@@ -1027,11 +1083,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // El sistema asume "sin respuesta" porque el cliente sigue sin pagar. El apagado remoto NO
   // es requisito. Ver plan Fase 0.
   function pasosPreviosRecoleccion(contratoId: string): { completo: boolean; faltan: string[] } {
-    const ultimoPago = pagos
-      .filter(p => p.contrato_id === contratoId && p.estado === "Confirmado")
+    const ultimoPago = (pagosPorContrato.get(contratoId) ?? SIN_FILAS)
+      .filter(p => p.estado === "Confirmado")
       .map(p => p.fecha)
       .sort((a, b) => b.localeCompare(a))[0] ?? "0000-00-00";
-    const gs = gestiones.filter(g => g.contrato_id === contratoId && g.fecha >= ultimoPago);
+    const gs = (gestionesPorContrato.get(contratoId) ?? SIN_FILAS).filter(g => g.fecha >= ultimoPago);
     const tieneMensaje = gs.some(g => g.tipo === "mensaje_recordatorio" || g.tipo === "whatsapp");
     const tieneLlamada = gs.some(g => g.tipo === "llamada");
     const tieneSirena  = gs.some(g => g.tipo === "sirena");

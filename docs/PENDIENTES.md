@@ -8,7 +8,35 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **3-nov-2026**.
+- Última revisión: **5-nov-2026**.
+
+> ▶️ **AL ARRANCAR (5-nov) — la app está lenta (queja del dueño del 4-nov).** La causa medida es el procesador
+> (cuentas que se rehacían en cada movimiento de la pantalla), no la descarga.
+> - ✅ **Paso 1: Cartera hace las cuentas de cada contrato una sola vez** (aprobado con «Sí, Cartera primero»; subido
+>   el 5-nov a las 12:25 p. m., 8462c96). Medido en la copia de prueba a 375 px, con los mismos datos, código viejo
+>   contra nuevo: **abrir Cartera 4,8 → 2,0 s congelada · 3 letras en el buscador 2,6 → 0,4 s.** Mismo texto letra por
+>   letra en Todos (352), Para hacer hoy (243) y Empalme (106); 1.064 pruebas; espejo de ZALA: 351 contratos, 0
+>   diferencias. Ninguna fórmula cambió (`cicloPago.ts` no se tocó). En producción no se ha medido.
+> - 🔲 **Falta para cumplir lo prometido (menos de 0,5 s): al abrir Cartera todavía son 2 s.** Medido el 5-nov: las
+>   cuentas ya tardan 0,04 s; lo que queda es dibujar la lista (352 contratos, unas 12.900 piezas en pantalla).
+>   Propuesto, **sin aprobar**: dibujar primero los 30 de arriba y el resto a medida que se baja (mismas cifras y orden).
+> - **A MEDIAS (5-nov): «Rodar todo» decía de menos «Debe en total»** cuando el acuerdo no tiene su lista
+>   (`partitura`) o está incumplido: restaba las cuotas vencidas del acuerdo y no sumaba lo que le falta. Eran 31
+>   contratos (20 sin lista, 11 incumplidos). **La base ya quedó:** mig 213, corrida el 5-nov a las 4:26 p. m. (lee la
+>   función viva y le agrega una línea; la prueba de adentro pasó). Medido después en los 344 contratos semanales:
+>   ninguno dice menos de lo que ya tiene vencido, y RML44H dice $2.119.000 (antes $530.000). Ese día se podían rodar
+>   todo 7. **La pantalla se subió el 5-nov:** esconde «Después de rodar debe» y «Se rueda al final del contrato» cuando
+>   no se puede (probado a 375 px). Visto al probar, sin tocar: el recuadro «Desde hoy» sigue diciendo «Acuerdo #1 queda
+>   cerrado» aunque no se pueda rodar. Aparte: para que a RML44H sí se le pueda rodar todo, rehacer la lista de su
+>   acuerdo #1 ($1.789.000 contra una deuda vieja de $1.089.000: falta saber qué son los otros $700.000).
+> - ✅ **Etiquetas de bodega** (pedido del 5-nov, fuera de MotoGestión): formato en blanco para pegarle a cada moto que
+>   entra a bodega, 9 por hoja carta, se marca con X. PDF en Escritorio → Etiquetas bodega; generador en
+>   `docs/etiquetas-bodega/` (sin subir).
+> - 🔲 **Paso 2:** bajar menos datos (`pagos` baja completa; columnas que no se usan). **Paso 3:** guardar los datos en el
+>   celular y bajar solo lo nuevo. Después, las demás pantallas: Contratos, Clientes, Motos y Panel.
+> - ✅ **Tarjetas-volante de los supervisores** (fuera del repo, Escritorio → Tarjetas supervisores): hecha la de Wilinton
+>   Mora y rehechas las 5 con la moto nítida (el `drop-shadow` del CSS la pegaba en el PDF a 380 px). Su WhatsApp en
+>   Usuarios se corrigió a 312 441 8999 con aprobación del dueño (antes decía 318 528 5817).
 
 > ▶️ **AL ARRANCAR (3-nov) — pedidos del día: motos guardadas y retenidas por supervisor en Reportes, y después
 > investigar Trello y aplicaciones parecidas.**

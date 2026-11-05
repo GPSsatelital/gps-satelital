@@ -239,11 +239,14 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaCli
                   <div style={{ fontSize: 22, fontWeight: 700, color: "var(--bad-ink)", fontVariantNumeric: "tabular-nums" }}>{pesos(calc.debe_todo)}</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted2)" }}>con lo no vencido del acuerdo</div>
                 </div>
-                <div style={{ ...caja, borderColor: "var(--ok-line)" }}>
-                  <p style={{ ...titulo, color: "var(--muted2)" }}>Después de rodar debe</p>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>{pesos(calc.despues?.total)}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted2)" }}>lo paga hoy o le queda como deuda</div>
-                </div>
+                {/* Si no se puede rodar todo, lo de «después» no va a pasar: no se muestra (mig 213). */}
+                {calc.puede && (
+                  <div style={{ ...caja, borderColor: "var(--ok-line)" }}>
+                    <p style={{ ...titulo, color: "var(--muted2)" }}>Después de rodar debe</p>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>{pesos(calc.despues?.total)}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted2)" }}>lo paga hoy o le queda como deuda</div>
+                  </div>
+                )}
               </div>
               <div style={caja}>
                 <p style={titulo}>Lo que debe, como un solo conjunto</p>
@@ -254,24 +257,26 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaCli
                 ))}
                 <Fila l="Total en tiempo" v={pesos(calc.tiempo_total)} fuerte />
               </div>
-              <div style={caja}>
-                <p style={titulo}>Se rueda al final del contrato</p>
-                <Fila l="Semanas completas" v={sem(calc.semanas_completas)} />
-                <Fila l="Sobra" v={pesos(calc.pedazo)} />
-                {calc.pedazo_se_rueda ? (
-                  <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
-                    Como sobran $100.000 o más, se corre <strong>una semana completa más, sin recargo</strong>.
-                    {deMas > 0 && <> Al final paga {pesos(deMas)} más de lo que debía.</>}
-                  </div>
-                ) : (calc.pedazo ?? 0) > 0 ? (
-                  <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
-                    Como sobran menos de $100.000, no se ruedan: los paga hoy o le quedan como deuda.
-                  </div>
-                ) : null}
-                <Fila l="Semanas que se ruedan" v={`${sem(calc.semanas_rodadas)} · ${pesos(calc.monto_rodado)}`} fuerte />
-                <Fila l={`Al final paga (con ${sem(calc.semanas_extra)} de recargo)`} v={`${sem(calc.semanas_a_cobrar)} · ${pesos(calc.monto_a_cobrar)}`} fuerte color="var(--accent-ink)" />
-                <Fila l="Fin del contrato" v={`${fechaLarga(calc.fecha_fin_antes)} pasa al ${fechaLarga(calc.fecha_fin_aprox)}`} />
-              </div>
+              {calc.puede && (
+                <div style={caja}>
+                  <p style={titulo}>Se rueda al final del contrato</p>
+                  <Fila l="Semanas completas" v={sem(calc.semanas_completas)} />
+                  <Fila l="Sobra" v={pesos(calc.pedazo)} />
+                  {calc.pedazo_se_rueda ? (
+                    <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
+                      Como sobran $100.000 o más, se corre <strong>una semana completa más, sin recargo</strong>.
+                      {deMas > 0 && <> Al final paga {pesos(deMas)} más de lo que debía.</>}
+                    </div>
+                  ) : (calc.pedazo ?? 0) > 0 ? (
+                    <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
+                      Como sobran menos de $100.000, no se ruedan: los paga hoy o le quedan como deuda.
+                    </div>
+                  ) : null}
+                  <Fila l="Semanas que se ruedan" v={`${sem(calc.semanas_rodadas)} · ${pesos(calc.monto_rodado)}`} fuerte />
+                  <Fila l={`Al final paga (con ${sem(calc.semanas_extra)} de recargo)`} v={`${sem(calc.semanas_a_cobrar)} · ${pesos(calc.monto_a_cobrar)}`} fuerte color="var(--accent-ink)" />
+                  <Fila l="Fin del contrato" v={`${fechaLarga(calc.fecha_fin_antes)} pasa al ${fechaLarga(calc.fecha_fin_aprox)}`} />
+                </div>
+              )}
               <div style={caja}>
                 <p style={titulo}>Desde hoy</p>
                 {calc.acuerdo && <Fila l={`Acuerdo #${calc.acuerdo.numero ?? ""}`} v="queda cerrado" />}

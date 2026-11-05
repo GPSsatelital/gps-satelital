@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { semanasACobrar, textoDeclaracion, htmlRodadoPorDeuda, pagaDeMasPorElPedazo, type CalculoRodado } from "./rodadoPorDeuda";
+import { semanasACobrar, textoDeclaracion, htmlRodadoPorDeuda, pagaDeMasPorElPedazo, minimoRodado, type CalculoRodado } from "./rodadoPorDeuda";
+
+describe("rodado por deuda — el mínimo (D-064, espejo de public.rodado_minimo)", () => {
+  it("$500.000 hasta el 30 de noviembre de 2026", () => {
+    expect(minimoRodado("2026-11-05")).toBe(500000);
+    expect(minimoRodado("2026-11-30")).toBe(500000);
+  });
+  it("$700.000 otra vez desde el 1 de diciembre de 2026, sin tocar nada", () => {
+    expect(minimoRodado("2026-12-01")).toBe(700000);
+    expect(minimoRodado("2027-01-15")).toBe(700000);
+  });
+});
 
 describe("rodado por deuda — la regla de las semanas de más (D-044)", () => {
   it("hasta 4 semanas, una más", () => {

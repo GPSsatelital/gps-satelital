@@ -4,6 +4,13 @@
 //
 // Colores en hex en el documento, NUNCA var(--…): se imprime en ventana aparte y html2canvas no
 // entiende las variables de la app.
+import { hoyISO } from "./fecha";
+
+/** Lo mínimo que tiene que deber un cliente para rodarle la deuda (D-064): $500.000 hasta el 30-nov-2026 y desde
+ *  el 1-dic otra vez $700.000, sin tocar nada. Espejo de `public.rodado_minimo()` (mig 214): si se cambia una, la otra. */
+export function minimoRodado(hoy: string = hoyISO()): number {
+  return hoy <= "2026-11-30" ? 500000 : 700000;
+}
 
 export type DeudaRodable = { deuda_id: string; concepto: string; que_es?: string; descripcion: string | null; pendiente: number };
 export type DeudaRodada = { deuda_id: string; concepto: string; descripcion: string | null; monto: number; completa: boolean };

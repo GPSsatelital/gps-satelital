@@ -1,4 +1,5 @@
 import type { Role } from "../contexts/AuthContext";
+import { minimoRodado, pesos } from "../utils/rodadoPorDeuda";
 
 // Catálogo curado de ACCIONES sensibles controlables por usuario (Opción A).
 // A diferencia de los MÓDULOS (qué pantallas ve, en modulos.ts), esto controla
@@ -60,11 +61,12 @@ export const ACCIONES: AccionDef[] = [
   // parte de su trabajo; lo sagrado es el rastro"): nadie pierde lo que ya hacía. La acción existe
   // para QUITÁRSELA a alguien puntual desde Usuarios, no para repartirla.
   { key: "rodar_tiempo",           label: "Rodar el tiempo de un contrato",     modulo: "contratos" },
-  // RODAR POR DEUDA (D-044, mig 191). A unos pocos clientes que deben más de $700.000 se les pasa el
+  // RODAR POR DEUDA (D-044, mig 191). A unos pocos clientes que deben más del mínimo (D-064: $500.000 hasta el
+  // 30-nov-2026, después $700.000) se les pasa el
   // tiempo que deben al final del contrato, con recargo. Decisión del dueño (6-oct): "solo yo, o
   // Sergio ya después de la capacitación" → ningún rol lo trae; ADMIN_PRINCIPAL lo tiene por el
   // bypass y a Sergio se le prende desde Usuarios. La base lo exige en las dos funciones (puede_accion).
-  { key: "rodar_por_deuda",        label: "Rodar por deuda (más de $700.000)",  modulo: "contratos", dbEnforced: true },
+  { key: "rodar_por_deuda",        label: `Rodar por deuda (más de ${pesos(minimoRodado())})`, modulo: "contratos", dbEnforced: true },
   // Motos
   { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
   { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },

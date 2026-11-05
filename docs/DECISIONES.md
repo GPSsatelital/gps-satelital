@@ -1091,3 +1091,18 @@ lista. 19 motos no tienen fecha de entrada y no suman días. 6 pruebas nuevas; 1
 en `src/components/reportes/FlotaReportes.tsx` · `ReportesView` (la lista de Guardadas ahora lee las liquidaciones) ·
 diccionario C26.
 **No toca:** plata, nómina, Motos, la ficha de la moto, Inmovilizaciones ni el Resumen. ZALA no lo usa.
+
+### D-064 · 5-nov-2026 · Rodar por deuda: el mínimo baja a $500.000 hasta el 30 de noviembre
+**Decidió:** el dueño, el 5-nov: *«baja el límite de 700 a 500 por este mes»*; y a la propuesta (las dos formas de
+rodar, hasta el 30-nov, y el 1-dic vuelve sola a $700.000): *«Sí, así»*.
+**Por qué:** necesitan rodar a varios clientes ya, y el mínimo de $700.000 (D-044, D-052) dejaba por fuera a los que
+deben entre $500.000 y $700.000.
+**Qué se decidió:**
+1. Hasta el 30-nov-2026 se puede rodar a quien deba más de $500.000, en «Solo lo atrasado» y en «Rodar todo». El resto
+   de la regla no cambia: una sola vez por contrato, solo semanales, el recargo y el pedazo de $100.000.
+2. El 1-dic-2026 vuelve sola a $700.000: la fecha está escrita en la base y en la app. Ese día no hay que correr nada.
+3. El botón de Contratos y el permiso en Usuarios dicen el mínimo del día. El manual de rodar sigue diciendo $700.000:
+   es la regla de siempre, la que vuelve en diciembre.
+**Dónde vive:** `public.rodado_minimo()` (mig 214), que leen `_calcular_rodado_por_deuda` y `_calcular_rodado_todo` ·
+su espejo `minimoRodado()` en `src/utils/rodadoPorDeuda.ts` (con su prueba) · `ContratosView` · `acciones.ts`.
+**No toca:** las cifras, las semanas, el recargo, las demás razones para no rodar, pagos, Cartera ni ZALA.

@@ -27,7 +27,7 @@ import { Chip, Badge, type BadgeTone } from "../components/atomos";
 import { abrirDocumento } from "../lib/storagePrivado";
 import ModalRodadoPorDeuda from "../components/ModalRodadoPorDeuda";
 import { useRodadosPorDeuda } from "../hooks/useRodadosPorDeuda";
-import { pesos as pesosRod, fechaLarga as fechaLargaRod } from "../utils/rodadoPorDeuda";
+import { pesos as pesosRod, fechaLarga as fechaLargaRod, minimoRodado } from "../utils/rodadoPorDeuda";
 import { CalendarClock, FileText as IconoDoc, Video as IconoVideo } from "lucide-react";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -629,7 +629,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             ) : puedeRodarPorDeuda && c.estado === "Activo" && c.forma_pago === "Semanal" ? (
               <button onClick={() => setRodadoAbierto(true)}
                 style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <CalendarClock size={18} aria-hidden="true" /> Rodar por deuda (más de $700.000)
+                {/* D-064: $500.000 solo hasta el 30-nov; el texto de siempre queda escrito porque el manual lo nombra. */}
+                <CalendarClock size={18} aria-hidden="true" /> {minimoRodado() === 500000 ? "Rodar por deuda (más de $500.000)" : "Rodar por deuda (más de $700.000)"}
               </button>
             ) : null}
             {puedeDocumentos && (

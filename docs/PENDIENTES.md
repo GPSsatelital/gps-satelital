@@ -20,7 +20,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - 🔲 **Falta para cumplir lo prometido (menos de 0,5 s): al abrir Cartera todavía son 2 s.** Medido el 5-nov: las
 >   cuentas ya tardan 0,04 s; lo que queda es dibujar la lista (352 contratos, unas 12.900 piezas en pantalla).
 >   Propuesto, **sin aprobar**: dibujar primero los 30 de arriba y el resto a medida que se baja (mismas cifras y orden).
-> - **A MEDIAS (5-nov): «Rodar todo» decía de menos «Debe en total»** cuando el acuerdo no tiene su lista
+> - **Hecho (5-nov): «Rodar todo» decía de menos «Debe en total»** cuando el acuerdo no tiene su lista
 >   (`partitura`) o está incumplido: restaba las cuotas vencidas del acuerdo y no sumaba lo que le falta. Eran 31
 >   contratos (20 sin lista, 11 incumplidos). **La base ya quedó:** mig 213, corrida el 5-nov a las 4:26 p. m. (lee la
 >   función viva y le agrega una línea; la prueba de adentro pasó). Medido después en los 344 contratos semanales:
@@ -29,6 +29,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   no se puede (probado a 375 px). Visto al probar, sin tocar: el recuadro «Desde hoy» sigue diciendo «Acuerdo #1 queda
 >   cerrado» aunque no se pueda rodar. Aparte: para que a RML44H sí se le pueda rodar todo, rehacer la lista de su
 >   acuerdo #1 ($1.789.000 contra una deuda vieja de $1.089.000: falta saber qué son los otros $700.000).
+> - **1-dic-2026: revisar que el mínimo para rodar volvió solo a $700.000** (D-064, mig 214, corrida el 5-nov a las
+>   4:55 p. m.). Hasta el 30-nov es $500.000. Se mira en la app: el botón de Contratos debe decir «más de $700.000».
+>   Medido al correrla, en los 347 contratos semanales: se podían rodar 25 con «Solo lo atrasado» y 16 con «Rodar
+>   todo» (con $700.000 eran 13 y 7). La 214 no cambió nada más: los 3 que se movieron fue por su cuenta del día.
 > - ✅ **Etiquetas de bodega** (pedido del 5-nov, fuera de MotoGestión): formato en blanco para pegarle a cada moto que
 >   entra a bodega, 9 por hoja carta, se marca con X. PDF en Escritorio → Etiquetas bodega; generador en
 >   `docs/etiquetas-bodega/` (sin subir).

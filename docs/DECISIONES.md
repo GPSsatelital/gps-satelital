@@ -1106,3 +1106,174 @@ deben entre $500.000 y $700.000.
 **Dónde vive:** `public.rodado_minimo()` (mig 214), que leen `_calcular_rodado_por_deuda` y `_calcular_rodado_todo` ·
 su espejo `minimoRodado()` en `src/utils/rodadoPorDeuda.ts` (con su prueba) · `ContratosView` · `acciones.ts`.
 **No toca:** las cifras, las semanas, el recargo, las demás razones para no rodar, pagos, Cartera ni ZALA.
+
+### D-066 · 7-nov-2026 · Acta de entrega y recibo cada vez que la moto cambia de manos
+*(D-065 queda para el bloqueo del efectivo sin firma o huella, aprobado el 6-nov y todavía sin anotar.)*
+**Decidió:** el dueño, el 7-nov. Lo pidió así: *«un documento legal de entrega y recepción del vehículo [...] donde
+diga la modalidad de alquiler con opción de compra, para quitar cualquier responsabilidad como empresa de lo que el
+conductor hizo o no con el vehículo»*, y después: *«que quede el tiempo, las condiciones y todo claro para que si hay
+algún inconveniente legal se pueda demostrar quién fue responsable del vehículo y en qué tiempo; en el sistema los
+clientes solo firmarán y ya el resto lo hace o lo genera el sistema»*. Eligió, una por una: un solo papel por cada
+cambio de manos; firmarlo cada vez que la moto vuelve y también cada vez que sale (*«que se le dé especie de un recibo
+o algo así a los clientes»*); el resumen final (*«parece que sí»*); y agregarle la línea de la modalidad al acta de
+entrega del contrato (*«Sí, agregarla»*).
+**Por qué:** la moto cambia de manos en siete momentos y solo la entrega del contrato deja un papel firmado. En el
+retiro voluntario y en la mora la moto llega por lo menos 7 días antes de la liquidación: un papel firmado solo en la
+liquidación dejaba esos días sin prueba, y muchas veces el cliente ya no está para firmar. Un papel no le quita a la
+empresa toda la responsabilidad (eso lo decide la ley), pero prueba quién tenía la moto y desde cuándo.
+**Qué se decidió:**
+1. Un solo papel, «Acta de entrega y recibo de motocicleta», numerado, que arma el sistema; el cliente solo firma. Se
+   firma cada vez que la moto vuelve a la empresa (recolección por mora, entrega voluntaria, liquidación con el
+   contrato activo, devolución de una prestada) y cada vez que sale hacia el cliente (devolverle su moto después de una
+   recolección, prestarle una de reemplazo). La entrega del contrato conserva su propia acta.
+2. Dice: quién entrega y quién recibe, la moto, el contrato y la modalidad (arrendamiento con opción de adquisición);
+   el estado (km, daños, llave, las 6 fotos y la lista de chequeo de la entrega, más placa, licencia de tránsito, SOAT,
+   casco y lo que el cliente deje en la moto), comparado con la vez anterior; el tiempo que la tuvo el cliente; que en
+   ese tiempo él responde por la moto (cláusulas tercera, décima y décima primera del contrato) y que las multas con
+   fecha de ese tiempo son suyas aunque lleguen después; desde cuándo la cuida la empresa, o él si es una entrega; que
+   no es un paz y salvo; dónde se hizo (la ubicación del aparato), la hora del sistema y un código de verificación.
+3. Firma: el cliente, con el dedo en la pantalla y la huella de su registro; por la empresa, el nombre de quien
+   registra y la hora. Si el cliente no firma, el papel dice por qué (se negó, la entregó otra persona, no había nadie)
+   y queda firmado por la empresa, con las fotos.
+4. El cliente recibe su copia por WhatsApp o en el tiquete impreso. El acta no se edita: si tiene un error se anula con
+   motivo y se hace otra, y la anulada sigue a la vista.
+5. Al acta de entrega del contrato se le agrega: «Se entrega en arrendamiento con opción de adquisición. Desde este
+   momento y hasta que la devuelva, la moto queda bajo su tenencia y su responsabilidad». Solo para los contratos que
+   se firmen de ahí en adelante: las actas ya firmadas no se tocan.
+6. Quedó por fuera, como opcional: tomar la huella en vivo con el lector cuando el cambio se hace en la oficina.
+**Dónde va a vivir (por construir):** una tabla nueva de actas (mig 216) · las seis ventanas donde la moto cambia de
+manos · el armador del acta junto a los demás documentos en `src/hooks/useDocumentos.ts` · el tiquete en
+`src/components/TicketTermico.tsx` · «Documentos del contrato».
+**No toca:** las cifras, la cartera, el reparto, el cálculo de la liquidación ni ZALA.
+**Falta:** que un abogado revise el texto antes de usarlo. El contrato firmado se llama «de arrendamiento» y no menciona
+la opción de adquisición, y hay que confirmar si basta con la huella del registro.
+
+### D-067 · 7-nov-2026 · Los grupos o portafolios se crean y se administran desde la app
+**Decidió:** el dueño, el 7-nov, una pregunta a la vez. Lo pidió pensando en lo que viene: *«al de usadas le vamos a
+cambiar el nombre y vamos a crear uno totalmente nuevo»*. Eligió que a un grupo se le pueda crear, cambiar el color y
+apagar, y que nunca se borre; que lo haga solo el Administrador principal; que cada grupo lleve solo nombre corto y
+color; que un grupo con motos no se pueda apagar; y que el nombre se corrija desde la pantalla solo mientras el grupo
+esté vacío (*«Sí, así»*). USADAS se va a llamar CAPITAL MOTOS: cuando se le preguntó si el que cambiaba era RASTREADOR,
+contestó *«solo el de usadas»*. Aprobó el plan completo el mismo día (*«Sí, apruebo»*).
+**Por qué:** los grupos están escritos a mano en unos 20 archivos y en las reglas de la base. Para un socio nuevo había
+que tocar código y escribir una migración, y una lista fija olvidada dejaba una pantalla sin el grupo nuevo, con sumas
+que no dan el total. Cambiarle el nombre a USADAS a mano era cambiar el mismo texto en sus motos, su cuenta, las fotos
+diarias de Cartera y el premio de referidos, con el riesgo de dejar uno a medias.
+**Qué se decidió:**
+1. La tabla de grupos es la única lista. El nombre corto es también lo que se guarda en cada moto, cuenta y perfil: no
+   hay un código interno aparte. Las reglas de la base apuntan a esa tabla, así que no se puede guardar un grupo que no
+   exista.
+2. A un grupo se le puede crear, cambiar el color, apagar y encender. Nunca se borra. Lo hace solo el Administrador
+   principal, y el candado está en la base, no solo en la pantalla.
+3. Desde la pantalla, el nombre se corrige solo mientras el grupo esté vacío: sin motos, socio, cuentas, plata, fotos de
+   Cartera ni premios. Un grupo con motos se renombra con una migración, como se hizo con CLUB a RASTREADOR en la 009.
+   Lo que ya se imprimió queda con el nombre viejo.
+4. Un grupo se apaga solo cuando no le quedan motos en la empresa (las vendidas no cuentan). Apagado no sale para
+   escoger en una moto nueva, un cambio de grupo, un socio nuevo ni una cuenta nueva. Lo que ya tiene se sigue viendo.
+5. El nombre lleva hasta 14 caracteres, en mayúsculas: letras, números y un espacio entre palabras. Se había dicho 12 y
+   se subió para que quepa CAPITAL MOTOS, que tiene 13. Debajo de la placa cabe: las placas ya miden entre 66 y 87 px
+   según sus letras y el nombre mide 80. La placa no se toca.
+6. El color sale de una paleta de 8 (azul, verde, ámbar, naranja, violeta, aguamarina, magenta y gris; ni rojo ni el
+   amarillo de la placa) y no se repite entre grupos prendidos. Para arrancar: RASTREADOR azul, COSTA verde, PRADERA
+   ámbar y CAPITAL MOTOS naranja. Cada grupo tiene un solo color en todas las pantallas.
+7. USADAS pasa a llamarse CAPITAL MOTOS con la migración 218: sus 14 motos, su cuenta, las fotos diarias de Cartera y el
+   nombre en el premio de referidos ya entregado. La plata del premio no se toca. RASTREADOR no cambia.
+8. La app deja de escoger un grupo sola (hoy pone RASTREADOR): en una moto nueva y en un socio nuevo hay que escogerlo,
+   y en el Excel un grupo que no existe rechaza esa fila con el motivo.
+9. Cada cambio queda en un historial: quién, cuándo, qué, antes y después.
+**Dónde va a vivir (por construir):** las migraciones 217 (el módulo) y 218 (USADAS) · la función `manage-users` · una
+sección Grupos en Configuración · los unos 20 archivos que hoy tienen la lista escrita a mano. La lista completa, el
+orden y las 8 pruebas de terminado están en `docs/PENDIENTES.md`, bloque P3.
+**No toca:** ninguna cifra de plata, lo que ve cada socio, las fechas de corte de la migración ni lo que ya se imprimió.
+**Falta:** construirlo después del bloqueo del efectivo (D-065) y del acta (D-066), ya en el otro PC. Cambiar una moto de
+grupo sigue sin dejar rastro y es un pendiente aparte.
+
+### D-068 · 7-nov-2026 · El acta de entrega y recibo no lleva el nombre ni la cédula del arrendador
+**Decidió:** el dueño, el 7-nov, al revisar la copia de revisión del acta: *«por lo que el que se les va a imprimir creo
+que ellos no deberían tener esa información»*. Eligió «Amarrada al contrato».
+**Por qué:** el cliente lee el acta en la pantalla antes de firmar. El acta no pierde fuerza: dice el número del
+contrato, y el contrato dice quién es el arrendador, con su cédula. Y si algún contrato llega a tener otro arrendador
+(por ejemplo con los grupos, D-067), la frase sigue siendo cierta sin tocarla.
+**Qué se decidió:** el acta dice «CLUB MOTEROS CARTAGENA, en nombre del arrendador del contrato N.º …, recibe la
+motocicleta…» (o «le entrega»). Con la moto prestada, que va aparte del contrato, dice solo «CLUB MOTEROS CARTAGENA».
+Una prueba avisa si el nombre o la cédula vuelven a aparecer en el acta.
+**No toca:** el contrato, el pagaré, el paz y salvo ni la autorización de datos, que lo siguen nombrando como hasta hoy.
+**Falta:** que el abogado lo confirme cuando revise el texto del acta (D-066).
+
+### D-069 · 7-nov-2026 · Acta de entrega y recibo: la ubicación no es obligatoria y la lista se contesta completa
+**Decidió:** el dueño, el 7-nov, antes de dibujar la parte de la firma. Eligió «Se intenta y, si no sale, se guarda
+igual» y «Tiene que contestar todos».
+**Qué se decidió:**
+1. Al guardar el acta se pide la ubicación del teléfono. Si no sale (el computador de la oficina muchas veces no
+   puede), el acta se guarda igual y el papel dice «El teléfono no dio la ubicación». En la visita y en el guardado de
+   la moto sigue siendo obligatoria, como hasta hoy.
+2. Los 13 puntos de la lista de chequeo se contestan todos, con Sí o No: mientras falte alguno, el botón de guardar
+   queda apagado y la ventana dice cuántos faltan.
+**Por qué:** la moto no puede esperar a que salga la señal, y las fotos, la hora y la firma siguen probando el cambio
+de manos. La lista completa no deja huecos en el papel.
+
+### D-070 · 7-nov-2026 · Acta de entrega y recibo: cuando la moto sale, el papel no habla de lo que el cliente dejó
+**Decidió:** el dueño, el 7-nov, al meter el acta en las ventanas donde la moto sale hacia el cliente. Eligió «Que no
+salga».
+**Qué se decidió:**
+1. Cuando la moto SALE (se le devuelve su moto o se le presta otra), el papel no trae el renglón «Lo del cliente que
+   quedó en la moto». Ese renglón sigue saliendo cuando la moto vuelve a la empresa.
+2. La llave, cuando la moto sale, se dice así: «Se entrega con la llave»; y si el cliente se había ido con una copia la
+   vez anterior, «Devolvió la llave que se había quedado» o «No devolvió la llave que se había quedado».
+**Por qué:** cuando la moto sale no hay nada del cliente guardado en ella, y un renglón vacío confunde al que firma.
+**No toca:** el acta cuando la moto vuelve (recolección, entrega voluntaria, liquidación, devolución de la prestada),
+que sigue diciendo lo que el cliente dejó en la moto y si entregó su llave.
+
+### D-071 · 7-nov-2026 · Acta en Motos → «Registrar recepción»: solo cuando la moto viene de un cliente
+**Decidió:** el dueño, el 7-nov. Eligió «Acta si viene de un cliente».
+**Qué se decidió:** en Motos → «Registrar recepción» el acta se hace cuando el motivo es «Entrega voluntaria»,
+«Liquidación de contrato» u «Otro motivo» y la moto tiene un contrato Activo. Con «Nuevo registro» (la moto que entra
+por primera vez a la empresa) nunca se hace.
+**Por qué:** el acta prueba que la moto pasó de las manos del cliente a la empresa. Sin un contrato activo no hay
+cliente que la entregue ni que firme.
+**No toca:** la recepción, que se guarda igual que antes con cualquier motivo.
+**Falta:** con «Otro motivo» la ventana no pregunta por la llave, así que el papel dice «No se preguntó». Lo mismo
+pasa al devolver la moto prestada. Queda por preguntarle al dueño si se agrega esa pregunta.
+
+### D-072 · 7-nov-2026 · Los botones de mensaje esperan con la pantalla tapada y no mandan dos veces
+**Decidió:** el dueño, el 7-nov: *«que no permita que presionen el botón varias veces y que obligue sí o sí a
+esperar»*. Aprobó el dibujo («Sí, hazlo»).
+**Por qué:** con el canal oficial el mensaje sale por debajo y la pantalla no reacciona mientras tanto. El funcionario
+vuelve a tocar el botón, y cada toque podía ser otro mensaje al cliente y otra gestión anotada.
+**Qué se decidió:**
+1. Mientras sale un mensaje, una ventana tapa toda la pantalla y dice «Enviando mensaje… a {el cliente}». No se puede
+   tocar nada hasta que termine; después sale la tarjeta de siempre (verde, amarilla o roja).
+2. El mismo mensaje pedido otra vez mientras va saliendo (el doble toque) sale una sola vez. Uno distinto sí sale: el
+   recibo «a los dos números» sigue mandando a los dos.
+3. Si el canal no contesta en 30 segundos, la ventana avisa y deja cerrarse a mano, para que la pantalla nunca quede
+   trabada. El mensaje sigue su camino y el candado de ese mensaje no se suelta hasta que conteste.
+4. El candado va dentro de la tubería única (`useEnvioMensaje`), no en cada botón: cubre los 8 botones sueltos sin
+   tocar las pantallas. La tanda masiva queda como estaba, con su candado y su barra de avance.
+**No toca:** por dónde sale el mensaje, qué plantilla usa, qué se anota en la gestión ni la tarjeta del resultado.
+
+### D-065 · 6-nov-2026 (la foto, 10-nov) · El efectivo de la oficina exige la firma, la huella y la foto del cliente
+*(Va después de la D-072 porque se anotó el 10-nov; el número se había guardado el 7-nov, ver la nota de la D-066.)*
+**Decidió:** el dueño. El 5-nov pidió que no se pudiera registrar efectivo en la oficina a un cliente sin la firma y la
+huella de la autorización de datos; el 6-nov aprobó el plan («Sí, que lo construya»); el 10-nov sumó la foto de perfil:
+*«lo de la foto también, no importa que haya que estar autorizando»*.
+**Qué se decidió:**
+1. En las cuatro ventanas que reciben efectivo en la oficina (Cartera → Registrar pago, Cobro Diario → Cobrar,
+   Inmovilizaciones → Cobrar para recuperar y → Cobrar alquiler), si al cliente le falta la firma, la huella o la foto,
+   el botón de registrar se apaga y sale un recuadro para tomárselas ahí mismo. Se guardan igual que en Clientes →
+   Editar (la misma carpeta y los mismos campos).
+2. Si no se puede (el lector no lee, el computador no tiene cámara), solo el dueño autoriza a ese cliente ese día, con
+   el motivo escrito. Queda guardado quién, cuándo y por qué, y nadie lo puede editar ni borrar. Los demás ven «llame
+   al dueño» y un botón para revisar de nuevo. Al otro día se le vuelve a pedir.
+3. No frena el cobro en campo (el cliente no está), las transferencias, el saldo a favor ni la semana adelantada.
+4. El candado de verdad está en la base (mig 215, `trg_enforce_registro_firma_huella`); la pantalla solo evita llegar
+   hasta él. Su espejo es `src/utils/firmaHuellaEfectivo.ts`: si se cambia uno, se cambia el otro.
+5. «Cobrar alquiler» dejó de ser un `confirm()` y pasó a ser una ventana, porque el pago puede frenarse y antes el
+   error de la base no se mostraba (se perdía sin aviso).
+**Por qué:** la firma es la autorización expresa para guardar los datos (Ley 1581) y la huella es el dato biométrico que
+esa firma autoriza. La foto la sumó el dueño sabiendo que el computador de la oficina no la toma con cámara (sí desde
+un archivo) y que habrá que autorizar más seguido.
+**Medido el 10-nov:** de 361 clientes con contrato vigente, a 118 les falta algo (a 59 solo la foto y a 52 las tres).
+De los 127 que pagaron efectivo en la oficina en los últimos 30 días, a 29 les faltaba algo (a 6, la firma o la huella).
+**No toca:** Clientes → Editar ni el registro de clientes, donde la foto sigue siendo opcional.
+**Ojo:** Importación Excel → «Pagos históricos» (solo el dueño) mete efectivo de la oficina: con la 215 corrida, los
+pagos de clientes a los que les falta algo se frenan. No se tocó.

@@ -8,7 +8,93 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **5-nov-2026**.
+- Última revisión: **10-nov-2026**.
+
+> 🔴 **AL ARRANCAR (7-nov) — EN EL OTRO PC.** El dueño dijo que no se vuelve a trabajar en el PC de la oficina. La
+> mudanza está en `P:\MUDANZA-2026-11-07`: puesta al día y comprobada el 10-nov, con los stickers de la XTZ 250 y el
+> canal de YouTube; la copia final con Claude cerrado la corre el dueño
+> (`COPIAR-AL-FINAL-CON-CLAUDE-CERRADO.bat`; si existe `COPIA-FINAL-HECHA.txt`, se hizo). Cómo instalarlo: su
+> `LEEME.md`. Nada de lo de abajo está en git: el último commit sigue siendo 7c2074c.
+> - ✅ **Bloqueo del efectivo sin firma, huella o foto (D-065): PUBLICADO el 10-nov.** La mig 215 se corrió el 10-nov a
+>   las 3:46 p. m. (candado 1 · tabla 1 · reglas 2 · 118 clientes) y la pantalla se subió sola, sin la DPU45I ni el
+>   acta, que siguen guardadas en el PC. Falta ver el primer caso real y «Cobrar alquiler» con un préstamo activo. El
+>   10-nov el dueño sumó la foto de perfil («no importa que haya que estar autorizando»). Las cuatro ventanas (Cartera
+>   → Registrar pago, Cobro Diario → Cobrar, Inmovilizaciones → Cobrar para recuperar y → Cobrar alquiler) muestran el
+>   recuadro y apagan el botón; «Cobrar alquiler» pasó de un `confirm()` a una ventana que sí muestra el error de la
+>   base. `tsc`, 1.198 pruebas y build en verde. Probado a 375 px sin guardar nada: Cartera (le faltan las tres / solo
+>   la foto) e Inmovilizaciones → recuperar (KRISTIAN CAICEDO, y KEYNER PEREA que tiene todo y no ve cambio).
+>   «Cobrar alquiler» no se pudo ver en pantalla: el 10-nov no había préstamos activos. Hoy frenaría a 118 de 361
+>   clientes vigentes (59 solo por la foto) y a 29 de los 127 que pagaron efectivo en la oficina en 30 días.
+>   Ojo para lo que sigue: en el PC, `CobrosView.tsx` todavía lleva los arreglos de la DPU45I (necesitan la mig 219 y
+>   la prueba espejo) e `InmovilizacionesView.tsx` el acta (D-066); se suben por nombre, nunca con `/deploy`.
+>   Importación Excel → «Pagos históricos» queda frenada para esos clientes (no se tocó).
+> - **Marca de cliente nuevo** (pedido del 6-nov: «con otro color para estar más pendientes»). Regla elegida: cada
+>   contrato nuevo, 30 días desde `fecha_entrega`. Falta: el dibujo con 3 variantes, en qué pantallas, medir y el
+>   plan con la vitrina. Los colores ya medidos están en la memoria `marca-cliente-nuevo`.
+> - **Liquidación en curso** (6-nov): el dueño preguntó si se puede deshacer o suspender. Sí se puede anular mientras
+>   no esté cerrada: botón «Anular» en Liquidaciones, que pide el motivo, libera el contrato, devuelve la moto a su
+>   estado y no borra la liquidación. No existe pausa. Quedó esperando si la retomamos. Falta revisar qué roles ven
+>   el botón.
+> - **Acta de entrega y recibo cada vez que la moto cambia de manos** (pedido del 7-nov). **Diseño aprobado el 7-nov
+>   (D-066)**: un solo papel numerado que arma el sistema, firmado en las seis ventanas donde la moto vuelve o sale,
+>   con copia al cliente por WhatsApp o tiquete, y una línea nueva en el acta de entrega del contrato. **En
+>   construcción desde el 7-nov** (dio el sí y pidió el manual de uso al final). Fase 1, la tabla `actas_vehiculo`
+>   (mig 216): **corrida y comprobada el 7-nov**. Fase 2, las cuentas y el texto (`src/utils/actaVehiculo.ts`, con sus
+>   pruebas): hecha. Fase 3, el papel (`generarHTMLActaVehiculo` en `useDocumentos.ts`): armado, probado y con el
+>   **texto aprobado por el dueño el 7-nov** (sin su nombre ni su cédula, D-068). Fase 4, la firma y la copia del
+>   cliente (dibujo aprobado el 7-nov; la ubicación no es obligatoria y la lista se contesta completa, D-069): **hecha
+>   y metida en la ventana de recolección por mora** (`ModalRecoleccion`), probada en pantalla a 375 px sin guardar
+>   nada. El guardado se probó el 7-nov con seis intentos que fallan a propósito (con una recepción que no existe): los
+>   cinco casos válidos (firma, se negó, otra persona, no había nadie y una entrega) pasaron todos los candados de la
+>   base, el de control lo frenó la regla y no quedó ningún acta guardada. **Falta probar de verdad** subir la firma y
+>   el PDF y amarrar el PDF a la fila, y el rol SUBADMIN: lo dirá la primera recolección real. Fase 5, las otras
+>   cinco ventanas: **hecha el 7-nov** (devolverle su moto, prestar una moto, recibir la prestada, iniciar una
+>   liquidación y Motos → «Registrar recepción»; D-070 y D-071). `tsc`, las 1.182 pruebas y el build en verde, y
+>   probadas en pantalla a 375 px sin guardar nada. Sigue la fase 6: la lista de actas en los documentos del contrato y
+>   el renglón de la modalidad en el acta de entrega del contrato; después, el manual de uso. La fase 6 quedó
+>   **dibujada y sin código** (el plan, en la memoria `acta-entrega-recibo`). **Por definir:** «¿la lista de actas
+>   va en las dos pantallas (Documentos del contrato y la ficha del cliente) o solo en Documentos?». El dueño no
+>   entendió la primera vez qué son las actas (nunca ha visto una: en producción hay 0); al cerrar el 7-nov se le
+>   explicó con el caso de la XYZ47H. **Preguntas abiertas:**
+>   ¿se pregunta por la llave al recibir la prestada y con «Otro motivo» (hoy el papel dice «No se preguntó»)? ¿El
+>   ingreso y la salida del taller también llevan acta? **Hueco del plan (visto el 7-nov):** «se anula con motivo y
+>   se hace otra» (D-066, punto 4) no quedó en ninguna fase: la base ya deja anular (ADMIN o ADMIN_PRINCIPAL, con
+>   motivo), pero no hay botón, y hacer otra acta de una recepción pasada necesita su propio dibujo. Nada subido a
+>   git. Por dónde retomar: memoria
+>   `acta-entrega-recibo`. Antes de usarla, que la revise un abogado.
+> - **Candado de los botones de mensaje** (pedido del 7-nov, D-072): **hecho el 7-nov, sin publicar.** Mientras sale
+>   un mensaje, la ventana «Enviando mensaje… a {cliente}» tapa la pantalla, y el mismo mensaje pedido dos veces sale
+>   una sola vez. Cubre los 8 botones sueltos sin tocar ninguna pantalla: vive en `useEnvioMensaje.ts`,
+>   `utils/envioEnCurso.ts`, `components/VentanaEnviandoMensaje.tsx` y una línea de `App.tsx`. A los 30 segundos
+>   deja cerrarse a mano. 13 pruebas nuevas; `tsc`, 1.195 pruebas y build en verde; probado en el navegador a 375 px
+>   (doble clic real: llegó 1 toque y salió 1 mensaje). Falta mirarlo con un mensaje de verdad la primera vez. Se
+>   publica subiendo esos archivos por su nombre, con sus dos pruebas.
+> - **Módulo de grupos o portafolios** (pedido del 7-nov). **Diseño aprobado el 7-nov (D-067); nada construido.** Los
+>   grupos se crean, cambian de color, se apagan y se encienden desde Configuración, solo el Administrador principal,
+>   y USADAS pasa a llamarse CAPITAL MOTOS. Va después del efectivo y del acta. El plan, el orden y las pruebas de
+>   terminado están en P3.
+
+> **AL ARRANCAR (6-nov) — tres pedidos del 5-nov en la noche, cada uno con su propia sesión, esperando al dueño.**
+> Ninguno tocó la app ni la base. Nada de esto está subido a git.
+> - **Aviso impreso: desde el lunes 9-nov el único número de atención es el de ZALA** (sesión «Aviso para imprimir:
+>   único número autorizado, ZALA»). El dueño escogió la variante 3 (calendario, con la franja amarilla hecha placa).
+>   **6-nov: el dueño dijo «sí» y el PDF está hecho** (Escritorio → «Avisos ZALA» → «Aviso ZALA 3 - Calendario.pdf»).
+>   La hoja carta está revisada, y el QR, leído del PDF cuadrito por cuadrito, abre el chat del 301 905 8986.
+>   **El dueño probó el QR con su celular y abre el chat: el aviso está TERMINADO.** El programa está en
+>   `docs/avisos-zala/` (`python hacer-avisos.py --pdf 3`).
+> - **Bloquear el efectivo de la oficina si al cliente le falta la firma o la huella de la autorización de datos**
+>   (sesión «Bloquear efectivo en oficina si el cliente no tiene huella»). **Aprobado el 6-nov; construido y probado el
+>   10-nov, con la foto sumada: ver el bloque del 7-nov.** El plan: mig 215
+>   (candado en la base + tabla de autorizaciones del día, que solo escribe el dueño) y un recuadro para tomar firma y
+>   huella en Cartera, Cobro Diario e Inmovilizaciones (cobrar para recuperar la moto y cobrar alquiler). El cobro en
+>   campo y las transferencias no se bloquean. Según esa sesión, hoy afectaría a 52 clientes activos y 8 con moto
+>   retenida. Toca pagos: no se sube lunes ni miércoles antes de las 6 p. m.
+> - **Lista de conductores requeridos** (pago pendiente o revisión del GPS; sesión «Lista de conductores requeridos
+>   (Excel)»). Se paró a medias el 5-nov, por pedido del dueño. Quedó el programa
+>   `docs/conductores-requeridos/hacer-formato.py`: formato en blanco de 8 fichas por hoja carta acostada (placa en
+>   recuadro amarillo, conductor, motivo GPS / pago pendiente / otro con X, qué hacer cuando llegue, a quién avisar,
+>   fecha y «resuelto el»). Falta correrlo, mirarlo y mostrárselo al dueño. Después, ver si la app avisa sola al
+>   registrar un pago: es la misma ventana del bloqueo por huella, así que hay que coordinar las dos.
 
 > ▶️ **AL ARRANCAR (5-nov) — la app está lenta (queja del dueño del 4-nov).** La causa medida es el procesador
 > (cuentas que se rehacían en cada movimiento de la pantalla), no la descarga.
@@ -29,6 +115,20 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   no se puede (probado a 375 px). Visto al probar, sin tocar: el recuadro «Desde hoy» sigue diciendo «Acuerdo #1 queda
 >   cerrado» aunque no se pueda rodar. Aparte: para que a RML44H sí se le pueda rodar todo, rehacer la lista de su
 >   acuerdo #1 ($1.789.000 contra una deuda vieja de $1.089.000: falta saber qué son los otros $700.000).
+> - **Hecho (5-nov): listas escritas a 7 acuerdos viejos** para que se les pueda «Rodar todo» (aprobado con «Sí,
+>   escríbelas»; antes se escribió la de JUAN CARLOS LEAL, YAL68H). RMZ68H JOSE LUIS LOPEZ PONCE · RMW28H JOHAN
+>   ANDRES PEREZ · RML49H GERSON TEHERAN · RLZ90H MIGUEL ANGEL PADILLA · RMZ46H MANUEL RAMON MORELO · XZI10H DIEGO
+>   LOCIN SOTO · RLZ91H LUIS FELIPE HUERTAS. En los 7 la deuda del acuerdo es de `migracion` y lo demás son semanas;
+>   cada lista suma exacto el total del acuerdo. DIEGO y LUIS FELIPE van con la lectura probable (el pedazo suelto es
+>   lo que le faltó a una semana pagada a medias): si el papel dice otra cosa, se corrige en Cartera con el editor de
+>   la lista. Medido antes y después: Cartera igual en los 7, «Rodar todo» pasó de cerrado a abierto en los 7, y en 4
+>   la deuda de migración bajó a lo que de verdad le falta al acuerdo (JOHAN $965.800 → $555.800, MANUEL $630.000 →
+>   $285.000, DIEGO $817.000 → $767.000, LUIS FELIPE $1.303.000 → $838.000). Cada lista quedó en `contratos_auditoria`.
+> - **Faltan 3, con el papel del acuerdo en la mano (lo mira el dueño):** RML44H LUIS ARMANDO MARTINEZ ($700.000 que no
+>   son semanas justas; el acuerdo dice «para recuperar moto retenida» y puede traer multa o lavada) · RLT68H MARTHA
+>   ALVAREZ BARRIOS ($1.590.000 da como la deuda completa de $1.200.000 + 2 semanas, pero antes había abonado
+>   $105.000: posible cobro doble) · RLT88H JORGE BELLO ($682.000 = $587.000 + $95.000, o $592.000 + $90.000).
+>   Quedan 19 acuerdos activos sin lista (medido el 5-nov, después de escribir las 7).
 > - **1-dic-2026: revisar que el mínimo para rodar volvió solo a $700.000** (D-064, mig 214, corrida el 5-nov a las
 >   4:55 p. m.). Hasta el 30-nov es $500.000. Se mira en la app: el botón de Contratos debe decir «más de $700.000».
 >   Medido al correrla, en los 347 contratos semanales: se podían rodar 25 con «Solo lo atrasado» y 16 con «Rodar
@@ -450,7 +550,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 🧑 **8 acuerdos viejos sin lista de qué financian.** Bloquean cualquier corrección
   automática. En algunos la lista se deduce sola (JOHAN: $965.800 de deuda + $195.000 de semana
-  = $1.160.800 exacto); esos se pueden escribir sin sacar el papel.
+  = $1.160.800 exacto); esos se pueden escribir sin sacar el papel. **5-nov:** escritas 8, la de JUAN CARLOS
+  LEAL y las 7 de arriba, JOHAN entre ellas («listas escritas a 7 acuerdos viejos»); quedan 19 activos sin lista.
 
 - [ ] 🧑 🔴 **JORDAN (DQL76I / LIQ-0073) — reabierta el 24-sep, falta cerrarla EN LA APP con él
   presente.** La base de datos ya quedó lista y verificada: liquidación `en_taller` · contrato
@@ -1113,6 +1214,82 @@ Lo que está afectando cifras reales de clientes en este momento.
   ⚠️ **Por definir, y cambia todo el trabajo:** ¿es un **respaldo** por si Supabase falla, o poder
   **trabajar sin internet** y sincronizar después? Lo primero es una tarea; lo segundo es un
   proyecto grande.
+
+- [ ] **Módulo de grupos o portafolios** (desarrollo): crear, cambiar el color, apagar y encender grupos desde la
+  app. **Diseño aprobado el 7-nov (D-067); nada construido.** Las decisiones y su porqué están en D-067; acá va el cómo.
+  - **Cuándo:** después del bloqueo del efectivo (D-065) y del acta de entrega (D-066), ya en el otro PC. No publicar
+    lunes ni miércoles antes de las 6 p. m.: toca Caja y Cobro Diario.
+  - **Antes de editar:** confirmar con el dueño que ningún otro trabajo está tocando los mismos archivos. Se cruza con
+    el acta en `MotosView.tsx` y con el efectivo en `CobrosView.tsx` y `CobroDiarioView.tsx`. Las líneas de abajo son
+    del 7-nov: buscarlas de nuevo antes de editar.
+  - **Base, migración 217 (el módulo):**
+    - tabla `grupos` (`codigo` = el nombre corto, `color`, `activo`, `created_at`, `creado_por`) con COSTA, PRADERA,
+      RASTREADOR y USADAS prendidos y OTRO apagado, y tabla `grupos_historial` (quién, cuándo, qué, antes, después);
+    - las reglas fijas pasan a llave hacia `grupos(codigo)` con `on update cascade`: `motos_grupo_check` (038),
+      `profiles_grupo_check` (014; antes, ver con una consulta de solo lectura cuál está viva, porque la de la 010 no
+      tenía USADAS) y la de `abonos_base.grupo` (091). `cuentas_grupos_validos` (080) pasa a un disparador;
+    - 4 funciones solo para el Administrador principal, con candado `for update` y su fila en el historial en el mismo
+      paso: crear, editar (el color siempre; el nombre solo si el grupo está vacío), apagar (0 motos en la empresa) y
+      encender. La regla del nombre también va en la base: hasta 14 caracteres, mayúsculas, letras, números y un
+      espacio entre palabras, sin `;` ni `:` (el filtro que va de Reportes a Cartera los usa de separador:
+      `ReportesView.tsx:1780,1875`, `CobrosView.tsx:1382`, `MotosView.tsx:265`);
+    - lectura: el personal ve todos los grupos; el SOCIO, solo el suyo; el historial, solo el Administrador principal;
+    - ZALA: vista `zala.portafolios`, permiso a `zala_lector` y sus filas en `zala.diccionario`. Las dos filas que hoy
+      listan los 4 grupos fijos, ('cliente','grupo') de la 126 y ('cuentas_pago','grupo') de la 200, pasan a decir
+      «los de zala.portafolios»;
+    - conteo de motos y contratos vivos por grupo antes y después, en el mismo paso; si no coincide, se deshace;
+    - no cambian: `mi_grupo()`, `mis_*_socio()`, las políticas del socio, el disparador de la 031, `handle_new_user`,
+      `zala._corte_migracion` ni `CORTE_POR_GRUPO` (USADAS no tiene fecha de corte propia).
+  - **Base, migración 218 (USADAS pasa a CAPITAL MOTOS):** el nombre cambia en `grupos` (llega solo a sus 14 motos),
+    en su cuenta (`array_replace`), en `cartera_del_dia` (96 filas al 6-nov; crecen cada día) y en el premio de
+    referidos ya entregado (solo el nombre; la plata no). Fila en el historial y conteos antes y después. Después:
+    prueba espejo, `CLAUDE.md` (la tabla de grupos y la fila de grupos válidos en ERRORES PASADOS) y
+    `docs/DICCIONARIO-ESTADOS.md`.
+  - **Servidor:** `supabase/functions/manage-users/index.ts:17` tiene `GRUPOS_VALIDOS` fijo; pasa a leer los grupos
+    prendidos. Volver a publicarla (`supabase functions deploy manage-users`) con permiso del dueño.
+  - **Que la app no escoja un grupo sola** (hoy pone RASTREADOR): moto nueva sin grupo puesto
+    (`MotosView.tsx:243,668`); en el Excel, un grupo que no existe rechaza la fila con el motivo
+    (`ImportacionView.tsx:195`); socio nuevo con grupo obligatorio (`UsuariosView.tsx:115,180,410`,
+    `ConfiguracionView.tsx:115,331,359`); un socio sin grupo ve un aviso en vez de RASTREADOR (`SocioDashboard.tsx:89`).
+  - **Pantallas (unos 20 archivos):**
+    - tipos: `hooks/useMotos.ts:12`, `contexts/AuthContext.tsx:9`, `hooks/useCuentasBancarias.ts:31-33`;
+    - colores: `styles/shared.ts:82-85`, `utils/exportar.ts:37`, `pages/FichaMotoView.tsx:32-34`;
+    - listas y filtros: `MotosView.tsx:243,351,668,720-724,1149-1153` · `ClientesView.tsx:717` ·
+      `ContratosView.tsx:215` · `CobrosView.tsx:1392,4214` · `CobroDiarioView.tsx:50-51` · `CajaView.tsx:23,612` ·
+      `DashboardView.tsx:158` · `HistorialPagosView.tsx:19-23` · `ReportesView.tsx:92-94` ·
+      `ImportacionView.tsx:15,40-42,166,195` · `ConfiguracionView.tsx:39,115,170-173,331,359,483-486,701` ·
+      `UsuariosView.tsx:13,115,180,227-230,410,565-568` · `SocioDashboard.tsx:39-43,89,180` · `App.tsx`;
+    - nuevos: `utils/grupos.ts` (con sus pruebas), `hooks/useGrupos.ts` y `components/SeccionGrupos.tsx`, la sección
+      Grupos de Configuración, solo para el Administrador principal. Mientras se escribe el nombre, muestra la placa
+      con el nombre debajo;
+    - no se tocan `Placa.tsx`, los documentos, los recibos, la nómina ni el tiquete: imprimen el grupo de la moto, y el
+      grupo ya es el nombre. Medido el 7-nov con el componente real: las 402 placas chicas miden de 66 a 87 px y
+      CAPITAL MOTOS, debajo, mide 80.
+  - **Orden:** la 217 → las pantallas leen la lista → la sección Grupos con «Crear grupo» → la 218 → las pruebas.
+  - **Qué se ve distinto:** un solo color por grupo en todas partes (cambian Caja Diaria y Cobro Diario); orden
+    alfabético en todas partes (cambian Reportes y el selector de socio); «Club Moteros Costa» y «Costa» pasan a decir
+    COSTA; la sección Grupos; y, después de la 218, CAPITAL MOTOS en vez de USADAS. Ninguna cifra de plata cambia, ni
+    lo que ve cada socio.
+  - **Terminado** (las 8 pruebas que aprobó el dueño):
+    1. `tsc --noEmit`, `npm run build` y `npm test`: 0 errores; todas las pruebas pasan, también las nuevas.
+    2. Los nombres de los grupos escritos a mano en `src/`, sin contar las pruebas: 0, salvo la fecha de corte de
+       `useContratos.ts`.
+    3. Conteo antes y después de la 217: las mismas motos y contratos vivos por grupo.
+    4. Las 4 funciones, con un bloque de prueba que se deshace solo: crean, cambian el color, no dejan renombrar un
+       grupo con motos ni apagarlo, encienden, y rechazan a quien no sea Administrador principal.
+    5. Después de la 218: 0 filas con USADAS fuera del historial; las 14 motos, la cuenta, las fotos y el premio con
+       el nombre nuevo.
+    6. Prueba espejo de ZALA después de la 217 y de la 218: 0 diferencias.
+    7. Pantallas a 375 px, de día y de noche: el grupo nuevo aparece en Motos, Usuarios, Cuentas, Caja, Cobro Diario,
+       Cartera, Reportes y Panel, y las sumas dan el total.
+    8. Contraste y desborde con las pruebas del kit de diseño: los 8 colores pasan y nada se sale a 280, 320 ni 414 px.
+
+    No se puede probar desde una sesión: entrar como un socio de verdad.
+  - **Queda aparte:** cambiar una moto de grupo sigue sin dejar rastro y se lleva su historia en los reportes. Y si
+    algún día se renombra RASTREADOR, su fecha de corte del 6-jul está atada al nombre en `useContratos.ts:145` y en
+    `zala._corte_migracion` (126:371): se mueven juntas, se corre la prueba espejo y se actualizan las pruebas de
+    `corteMigracion.test.ts` (medido el 7-nov: 63 de sus 91 contratos vivos usan ese corte; hoy ninguno cambiaría de
+    cifra).
 
 ---
 

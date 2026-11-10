@@ -39,6 +39,9 @@ import { useCuentasBancarias, cuentasDelGrupo } from "../hooks/useCuentasBancari
 import { faltaElegirCuenta } from "../utils/cuentasDelDia";
 import MoneyInput from "../components/MoneyInput";
 import { Badge } from "../components/atomos";
+import FirmaHuellaEfectivo from "../components/FirmaHuellaEfectivo";
+import { useEfectivoFirmaHuella } from "../hooks/useEfectivoFirmaHuella";
+import { exigeFirmaHuella } from "../utils/firmaHuellaEfectivo";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -198,6 +201,11 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { prestamos } = usePrestamos();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
 
+  // El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215).
+  const contratoCobro = cobrandoId ? contratos.find(c => c.id === cobrandoId) : null;
+  const clienteCobro = contratoCobro ? clientes.find(cl => cl.id === contratoCobro.cliente_id) : null;
+  const cobroFirmaHuella = useEfectivoFirmaHuella(clienteCobro, !!cobrandoId && exigeFirmaHuella(cobrarMetodo));
+
   const filas: Fila[] = useMemo(() => {
     return contratos
       .filter(c => c.estado === "Activo")
@@ -351,11 +359,16 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     return null;
   }
 
+  function errorFirmaHuella() {
+    return `Para recibirle efectivo, primero hay que registrarle ${cobroFirmaHuella.falta.texto} en el recuadro de arriba, o el dueño lo autoriza solo por hoy.`;
+  }
+
   // Valida y abre la ventana flotante de confirmación (en vez de cobrar directo).
   function pedirConfirmacionCobro() {
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    if (cobrarMetodo === "Efectivo" && cobroFirmaHuella.bloquea) { setCobrarError(errorFirmaHuella()); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
     const errCta = errorCuenta(filas.find(f => f.contratoId === cobrandoId)?.motoId);
@@ -377,6 +390,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    if (cobrarMetodo === "Efectivo" && cobroFirmaHuella.bloquea) { setCobrarError(errorFirmaHuella()); setConfirmarCobroOpen(false); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
     // Se revalida acá a propósito: este handler también se dispara desde la ventana de
@@ -482,7 +496,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         onClick={e => { if (e.target === e.currentTarget) setCobrandoId(null); }}
       >
-        <div style={{ background: "var(--card)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
+        <div style={{ background: "var(--card)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
             <div>
@@ -554,6 +568,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               ))}
             </div>
             {!esSecretaria && <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 5, textAlign: "center" }}>Solo la secretaria registra efectivo</div>}
+            {/* El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215). */}
+            {cobrarMetodo === "Efectivo" && <FirmaHuellaEfectivo key={cobrandoId} fh={cobroFirmaHuella} />}
             {/* Sin referencia no hay forma de comprobar después que el dinero entró. */}
             {cobrarMetodo === "Transferencia" && (
               <div style={{ marginTop: 10 }}>
@@ -640,12 +656,15 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             </button>
             <button
               onClick={pedirConfirmacionCobro}
-              disabled={cobrandoLoading || cobrarSubiendo}
-              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: (cobrandoLoading || cobrarSubiendo) ? "var(--faint)" : "var(--text)", color: "var(--card)", cursor: (cobrandoLoading || cobrarSubiendo) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
+              disabled={cobrandoLoading || cobrarSubiendo || cobroFirmaHuella.bloquea}
+              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: (cobrandoLoading || cobrarSubiendo || cobroFirmaHuella.bloquea) ? "var(--faint)" : "var(--text)", color: "var(--card)", cursor: (cobrandoLoading || cobrarSubiendo || cobroFirmaHuella.bloquea) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
             >
               {cobrarSubiendo ? "Subiendo foto..." : cobrandoLoading ? "Registrando..." : "✅ Confirmar pago"}
             </button>
           </div>
+          {cobroFirmaHuella.razon && (
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>{cobroFirmaHuella.razon}</div>
+          )}
         </div>
       </div>
     );

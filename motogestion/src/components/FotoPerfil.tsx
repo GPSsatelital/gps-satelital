@@ -6,6 +6,8 @@ interface Props {
   label: string;
   valorInicial?: string | null;
   onChange: (dataUrl: string | null) => void;
+  /** En Clientes la foto es opcional; para recibir efectivo en la oficina no (D-065). */
+  opcional?: boolean;
 }
 
 const TAMANO_RECORTE = 320; // px de salida, cuadrado (se muestra circular con CSS)
@@ -23,7 +25,7 @@ function recortarCentrado(img: HTMLImageElement): string {
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-export default function FotoPerfil({ label, valorInicial = null, onChange }: Props) {
+export default function FotoPerfil({ label, valorInicial = null, onChange, opcional = true }: Props) {
   const [foto, setFoto] = useState<string | null>(valorInicial);
   const [previa, setPrevia] = useState<string | null>(null);
   const inputCamaraRef = useRef<HTMLInputElement>(null);
@@ -96,7 +98,7 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
     <div>
       <div style={{ ...labelStyle, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
         {label}
-        <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(opcional)</span>
+        {opcional && <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(opcional)</span>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <div style={{

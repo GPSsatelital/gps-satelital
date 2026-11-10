@@ -40,6 +40,9 @@ import { usePrestamos } from "../hooks/usePrestamos";
 import { Chip } from "../components/atomos";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
+import Placa from "../components/Placa";
+import FirmaHuellaEfectivo from "../components/FirmaHuellaEfectivo";
+import { useEfectivoFirmaHuella } from "../hooks/useEfectivoFirmaHuella";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFechaLarga(iso: string) {
@@ -497,6 +500,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [cobroMonto, setCobroMonto] = useState("");
   const [cobroProc, setCobroProc] = useState(false);
   const [cobroErr, setCobroErr] = useState<string | null>(null);
+  // El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215).
+  const cobroFirmaHuella = useEfectivoFirmaHuella(
+    cobroRec ? clientes.find(cl => cl.id === cobroRec.clienteId) : null,
+    !!cobroRec,
+  );
   const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
   const [plazoRec, setPlazoRec] = useState<MotoRetenida | null>(null);   // dar plazo para entregar debiendo
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
@@ -511,14 +519,31 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
   const [cobrandoAlquilerId, setCobrandoAlquilerId] = useState<string | null>(null);
+  // Antes era un confirm() y el error de la base no se mostraba: si el pago fallaba, nadie se
+  // enteraba. Ahora es una ventana, porque el candado de la mig 215 puede frenarlo.
+  const [alquilerSel, setAlquilerSel] = useState<{
+    prestamoId: string; contratoId: string; monto: number; placaPrestada: string;
+    clienteId: string | null; clienteNombre: string;
+  } | null>(null);
+  const [alquilerErr, setAlquilerErr] = useState<string | null>(null);
+  const alquilerFirmaHuella = useEfectivoFirmaHuella(
+    alquilerSel?.clienteId ? clientes.find(cl => cl.id === alquilerSel.clienteId) : null,
+    !!alquilerSel,
+  );
 
-  async function cobrarAlquiler(prestamoId: string, contratoId: string, monto: number) {
-    if (prestamoProc || !profile) return;
-    if (!confirm(`¿Cobrar el alquiler de reemplazo de $${fmt(monto)} (efectivo)?`)) return;
-    setPrestamoProc(prestamoId); setCobrandoAlquilerId(prestamoId);
+  async function cobrarAlquiler() {
+    if (!alquilerSel || prestamoProc || !profile) return;
+    if (alquilerFirmaHuella.bloquea) {
+      setAlquilerErr(`Para recibirle efectivo, primero hay que registrarle ${alquilerFirmaHuella.falta.texto} en el recuadro de arriba, o el dueño lo autoriza solo por hoy.`);
+      return;
+    }
+    const { prestamoId, contratoId, monto } = alquilerSel;
+    setPrestamoProc(prestamoId); setCobrandoAlquilerId(prestamoId); setAlquilerErr(null);
     try {
       // El trigger IGNORA alquiler_reemplazo (mig 053): no toca el ledger, solo entra a caja.
-      await registrarPago(contratoId, monto, "Efectivo", APLICADO_LO_REPARTE_LA_BD, { tipoRegistro: "alquiler_reemplazo", registradoPor: profile.id });
+      const { error } = await registrarPago(contratoId, monto, "Efectivo", APLICADO_LO_REPARTE_LA_BD, { tipoRegistro: "alquiler_reemplazo", registradoPor: profile.id });
+      if (error) { setAlquilerErr(error); return; }
+      setAlquilerSel(null);
     } finally { setPrestamoProc(null); setCobrandoAlquilerId(null); }
   }
 
@@ -630,6 +655,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     if (!cobroRec || cobroProc || !profile) return;
     const monto = Number(cobroMonto) || 0;
     if (monto <= 0) { setCobroErr("Ingresa un valor válido."); return; }
+    if (cobroFirmaHuella.bloquea) {
+      setCobroErr(`Para recibirle efectivo, primero hay que registrarle ${cobroFirmaHuella.falta.texto} en el recuadro de arriba, o el dueño lo autoriza solo por hoy.`);
+      return;
+    }
     if (!confirm(`¿Registrar pago en efectivo de $${fmt(monto)} de ${cobroRec.clienteNombre} para recuperar la moto ${cobroRec.placa}?`)) return;
     setCobroProc(true); setCobroErr(null);
     try {
@@ -1395,7 +1424,13 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                     })()}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
-                    <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}
+                    <button onClick={() => {
+                      setAlquilerSel({
+                        prestamoId: p.id, contratoId: p.contrato_id, monto: p.tarifa_dia,
+                        placaPrestada: motoP?.placa ?? "", clienteId: cli?.id ?? null, clienteNombre: cli?.nombre ?? "—",
+                      });
+                      setAlquilerErr(null);
+                    }} disabled={proc}
                       style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
                       {cobrandoAlquilerId === p.id ? "Cobrando..." : "💵 Cobrar alquiler"}
                     </button>
@@ -1450,7 +1485,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       {cobroRec && (
         <>
           <div onClick={() => !cobroProc && setCobroRec(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>💵 Cobrar para recuperar</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14, textTransform: "uppercase" }}>{cobroRec.placa} · {cobroRec.clienteNombre}</div>
 
@@ -1466,14 +1501,51 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
             <MoneyInput label="Valor recibido (efectivo)" value={cobroMonto} onChange={setCobroMonto} />
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>El pago cubre primero la <strong>multa/deudas</strong> (mínimo para llevarse la moto) y luego las cuotas atrasadas. Pídele lo máximo que pueda dar; lo que quede de atrasado se puede dejar en un convenio (botón 📝 Convenio).</div>
 
+            <FirmaHuellaEfectivo key={cobroRec.contratoId} fh={cobroFirmaHuella} />
+
             {cobroErr && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{cobroErr}</div>}
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={() => setCobroRec(null)} disabled={cobroProc} style={{ flex: 1, padding: 11, borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
-              <button onClick={handleCobrarRecuperar} disabled={cobroProc} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, opacity: cobroProc ? 0.6 : 1 }}>
+              <button onClick={handleCobrarRecuperar} disabled={cobroProc || cobroFirmaHuella.bloquea} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: cobroFirmaHuella.bloquea ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14, opacity: cobroProc || cobroFirmaHuella.bloquea ? 0.6 : 1 }}>
                 {cobroProc ? "Registrando..." : "Registrar pago"}
               </button>
             </div>
+            {cobroFirmaHuella.razon && (
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>{cobroFirmaHuella.razon}</div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Cobrar el alquiler de hoy de la moto prestada (efectivo de la oficina) */}
+      {alquilerSel && (
+        <>
+          <div onClick={() => !prestamoProc && setAlquilerSel(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", maxHeight: "calc(100dvh - 32px)", overflowY: "auto", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>💵 Cobrar alquiler</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, minWidth: 0 }}>
+              {alquilerSel.placaPrestada && <Placa placa={alquilerSel.placaPrestada} size="sm" />}
+              <span style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase", minWidth: 0 }}>{alquilerSel.clienteNombre}</span>
+            </div>
+
+            <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px", fontSize: 13, color: "var(--text)" }}>
+              Alquiler de hoy: <strong>${fmt(alquilerSel.monto)}</strong> en efectivo
+            </div>
+
+            <FirmaHuellaEfectivo key={alquilerSel.prestamoId} fh={alquilerFirmaHuella} />
+
+            {alquilerErr && <div role="alert" style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{alquilerErr}</div>}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={() => setAlquilerSel(null)} disabled={!!prestamoProc} style={{ flex: 1, padding: 11, borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
+              <button onClick={cobrarAlquiler} disabled={!!prestamoProc || alquilerFirmaHuella.bloquea} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: alquilerFirmaHuella.bloquea ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14, opacity: prestamoProc || alquilerFirmaHuella.bloquea ? 0.6 : 1 }}>
+                {cobrandoAlquilerId === alquilerSel.prestamoId ? "Registrando..." : "Registrar pago"}
+              </button>
+            </div>
+            {alquilerFirmaHuella.razon && (
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>{alquilerFirmaHuella.razon}</div>
+            )}
           </div>
         </>
       )}

@@ -104,6 +104,9 @@ import { desglosarBase, motivoNoSePuedeTrasladar } from "../utils/excedenteBase"
 import { deudasYAcuerdos } from "../utils/cuentaLiquidacion";
 import { useAbonosBase } from "../hooks/useAbonosBase";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
+import FirmaHuellaEfectivo from "../components/FirmaHuellaEfectivo";
+import { useEfectivoFirmaHuella } from "../hooks/useEfectivoFirmaHuella";
+import { exigeFirmaHuella } from "../utils/firmaHuellaEfectivo";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
 import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
@@ -1436,6 +1439,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     ? resumenContratos.find(c => c.id === modalContratoId) ?? null
     : null;
   const modalCliente = modalContrato ? clientes.find(cl => cl.id === modalContrato.cliente_id) : null;
+  // El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215).
+  const modalFirmaHuella = useEfectivoFirmaHuella(modalCliente, modalPago && exigeFirmaHuella(modalMetodo));
   const modalMoto = modalContrato ? motos.find(m => m.id === modalContrato.moto_id) : null;
   const modalPagos = modalContratoId ? pagosDelContrato(modalContratoId).slice(0, 8) : [];
 
@@ -1510,6 +1515,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // Defensa en profundidad: aunque la UI fuerce Transferencia, el handler lo revalida.
     if (modalMetodo === "Efectivo" && !puedePagoNormal)
       return "No tienes permiso para registrar efectivo — el efectivo lo registra la secretaria.";
+    if (modalMetodo === "Efectivo" && modalFirmaHuella.bloquea)
+      return `Para recibirle efectivo, primero hay que registrarle ${modalFirmaHuella.falta.texto} en el recuadro de arriba, o el dueño lo autoriza solo por hoy.`;
     if (modalMetodo !== "Transferencia") return null;
     if (!modalComprobante) return "Sube la foto del comprobante de la transferencia.";
     if (!modalReferencia.trim()) return "Escribe el N° de referencia de la transferencia.";
@@ -4468,6 +4475,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               )}
             </div>
 
+            {/* El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215). */}
+            {modalMetodo === "Efectivo" && (
+              <FirmaHuellaEfectivo key={modalContratoId ?? "sin-contrato"} fh={modalFirmaHuella} estilo={{ marginTop: 0, marginBottom: 14 }} />
+            )}
+
             {/* Fecha real del pago — SOLO en transferencia. El efectivo se recibe en la mano
                 aquí y ahora: registrarlo con otra fecha no tiene sentido y abriría un hueco
                 de control (nadie puede "recordar" que le entregaron billetes hace 5 días). */}
@@ -4635,11 +4647,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={pedirConfirmacionModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
+              <button onClick={pedirConfirmacionModal} disabled={modalSubiendo || modalFirmaHuella.bloquea} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo || modalFirmaHuella.bloquea ? 0.6 : 1, cursor: modalFirmaHuella.bloquea ? "not-allowed" : "pointer" }}>
                 {modalSubiendo ? "Guardando…" : "Registrar pago"}
               </button>
               <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
             </div>
+            {modalFirmaHuella.razon && (
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>{modalFirmaHuella.razon}</div>
+            )}
           </div>
         </div>
       )}

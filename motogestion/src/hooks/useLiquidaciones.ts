@@ -221,8 +221,27 @@ export function useLiquidaciones() {
     // La revisión de taller es obligatoria en toda liquidación: se crea una orden
     // REAL en el módulo de Taller (la ve el mecánico en su lista de siempre) y se
     // vincula a la liquidación — ya no se escribe el estado inválido "En taller".
-    let tallerId: string | null = null;
+    //
+    // EXCEPTO si la moto ya la tiene OTRO contrato vivo (11-nov-2026): anda en la calle con otro
+    // cliente, así que no hay nada que revisar y mandarla «En taller» la sacaba de su lugar. Fue la
+    // YAL65H: se la entregaron a otro el 31-oct, el 6-nov se liquidó el contrato viejo y Cartera la
+    // mostró «en el taller» rodando. Esa liquidación va sin revisión de taller (queda 'iniciada').
+    let motoConOtroCliente = false;
     if (motoId) {
+      const { data: otros, error: errOtros } = await supabase
+        .from("contratos")
+        .select("id")
+        .eq("moto_id", motoId)
+        .neq("id", contratoId)
+        .in("estado", ["Activo", "En proceso"])
+        .limit(1);
+      if (errOtros) return { error: `No se pudo revisar si la moto ya tiene otro cliente: ${errOtros.message}` };
+      motoConOtroCliente = (otros?.length ?? 0) > 0;
+    }
+    const conRevision = !!motoId && !motoConOtroCliente;
+
+    let tallerId: string | null = null;
+    if (motoId && conRevision) {
       const { data: orden } = await supabase.from("taller").insert({
         moto_id: motoId,
         estado_tecnico: "Pendiente",
@@ -240,7 +259,7 @@ export function useLiquidaciones() {
       cliente_id: clienteId,
       moto_id: motoId,
       motivo,
-      estado: motoId ? "en_taller" : "iniciada",
+      estado: conRevision ? "en_taller" : "iniciada",
       ahorro_acumulado: ahorroAcumulado,
       total_deudas: totalDeudas,
       detalle_deudas: detalleDeudas,

@@ -217,15 +217,35 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     const tieneContrato = contratos.some(ct => ct.cliente_id === c.id && (ct.estado === "Activo" || ct.estado === "En proceso") && ct.id !== contratoId);
     return !tieneContrato;
   });
+  // D-077 (11-nov-2026): ninguna moto se entrega si la liquidación del cliente anterior no está
+  // cerrada (con o sin firma), sin excepciones. La regla vive en la base (mig 222,
+  // `motivo_moto_sin_liquidar`); acá solo se lee para mostrar el candado antes de elegir.
+  const [sinLiquidar, setSinLiquidar] = useState<Map<string, string>>(new Map());
+  const [errSinLiquidar, setErrSinLiquidar] = useState<string | null>(null);
+  useEffect(() => {
+    if (step !== 2) return;
+    let vivo = true;
+    supabase.from("motos_sin_liquidar").select("moto_id, motivo").then(({ data, error }) => {
+      if (!vivo) return;
+      setErrSinLiquidar(error ? error.message : null);
+      setSinLiquidar(new Map((data ?? []).map((r: { moto_id: string; motivo: string }) => [r.moto_id, r.motivo])));
+    });
+    return () => { vivo = false; };
+  }, [step]);
+
   const motosDisponibles = motos.filter(m => {
     if (motoBusqueda) {
       const q = motoBusqueda.toLowerCase();
       return (m.estado === "Disponible") && (m.placa.toLowerCase().includes(q) || m.marca.toLowerCase().includes(q) || m.modelo.toLowerCase().includes(q));
     }
     return m.estado === "Disponible";
-  }).map(m => ({ m, papeles: papelesMoto(m, hoy) }))
+  }).map(m => {
+    const papeles = papelesMoto(m, hoy);
+    const liquidacion = sinLiquidar.get(m.id) ?? null;
+    return { m, papeles, liquidacion, puede: papeles.puedeEntregar && !liquidacion };
+  })
     // Las que no se pueden entregar van al final, para que no tapen a las que sí.
-    .sort((a, b) => Number(b.papeles.puedeEntregar) - Number(a.papeles.puedeEntregar));
+    .sort((a, b) => Number(b.puede) - Number(a.puede));
 
   const tarifaDiaria = Number(form.tarifa_ls) || 0;
   const tarifaDomingo = Number(form.tarifa_dom) || 0;
@@ -476,38 +496,25 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     }
     setGuardando(true); setError(null);
     try {
-      // ¿Esta moto tiene una liquidación sin cerrar? En la operación real el papeleo va detrás
-      // de la calle (el cliente entrega, se reasigna enseguida, la liquidación se cierra días
-      // después), así que NO se bloquea — se avisa. La única excepción es 'cumplimiento': ahí
-      // la moto va a quedar del cliente anterior y entregarla a otro sería un problema serio.
-      const { data: liqAbierta } = await supabase
-        .from("liquidaciones")
-        .select("numero, motivo, estado, cliente_id")
-        .eq("moto_id", mId)
-        .neq("estado", "cerrada")
-        .limit(1);
-      if (liqAbierta && liqAbierta.length > 0) {
-        const lq = liqAbierta[0];
-        const duenoAnterior = clientes.find(c => c.id === lq.cliente_id)?.nombre ?? "otro cliente";
-        if (lq.motivo === "cumplimiento") {
-          setError(
-            `No se puede asignar: la liquidación ${lq.numero} de ${duenoAnterior} es por CUMPLIMIENTO, ` +
-            `así que esta moto va a quedar de su propiedad. Elige otra placa.`,
-          );
-          return;
-        }
-        const seguir = confirm(
-          `Ojo: esta moto tiene la liquidación ${lq.numero} de ${duenoAnterior} SIN CERRAR ` +
-          `(va en la etapa "${lq.estado}").\n\n` +
-          `Solo continúa si ${duenoAnterior} ya entregó la moto de verdad y lo que falta es el papeleo.\n\n` +
-          `¿Asignársela a este cliente?`,
-        );
-        if (!seguir) return;
+      // D-077: si la liquidación del cliente anterior no está cerrada, NO se asigna (antes solo
+      // avisaba y dejaba seguir). Se pregunta a la base en el momento, no a la lista ya cargada:
+      // alguien pudo abrir una liquidación mientras tanto. Si no se puede revisar, tampoco se sigue.
+      const { data: motivoLiq, error: errLiq } = await supabase.rpc("motivo_moto_sin_liquidar", { p_moto_id: mId });
+      if (errLiq) { setError(`No se pudo revisar la cuenta del cliente anterior de esta moto: ${errLiq.message}`); return; }
+      if (motivoLiq) {
+        setError(`No se puede entregar ${elegida?.placa ?? "esta moto"}: ${motivoLiq} Ciérrela en Liquidaciones (se puede cerrar sin firma).`);
+        return;
       }
+      const motoAntes = contratoData?.moto_id ?? null;
       const { error: e1 } = await supabase.from("contratos").update({ moto_id: mId }).eq("id", contratoId);
       if (e1) { setError(e1.message); return; }
       const { error: e2 } = await supabase.from("motos").update({ estado: "Reservada" }).eq("id", mId);
-      if (e2) { setError(e2.message); return; }
+      if (e2) {
+        // El candado de la base (mig 222) pudo frenar la reserva: el contrato no se queda apuntando a esta moto.
+        await supabase.from("contratos").update({ moto_id: motoAntes }).eq("id", contratoId);
+        setError(e2.message);
+        return;
+      }
       setMotoId(mId);
       setContratoData(prev => prev ? { ...prev, moto_id: mId } : prev);
       setStep(3);
@@ -987,8 +994,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   No hay motos disponibles{motoBusqueda ? " con ese filtro" : ""}.
                 </div>
               )}
+              {errSinLiquidar && (
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--bad-ink)", background: "var(--bad-soft)", border: "1px solid var(--bad-line)", borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                  No se pudo revisar si estas motos tienen la liquidación del cliente anterior sin cerrar. Al elegir una, se revisa otra vez.
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {motosDisponibles.slice(0, 30).map(({ m, papeles }) => papeles.puedeEntregar ? (
+                {motosDisponibles.slice(0, 30).map(({ m, papeles, liquidacion, puede }) => puede ? (
                   <button key={m.id} onClick={() => {
                     if (!confirm(`¿Confirmas la moto ${m.placa} (${m.marca} ${m.modelo}) para ${(clienteActual?.nombre ?? "").toUpperCase()}?`)) return;
                     setMotoEligiendo(m.id);
@@ -1020,10 +1032,18 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--bad-ink)" }}>{m.placa} · No se puede entregar</div>
                     <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
+                    {liquidacion && (
+                      <>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--bad-ink)", marginTop: 4 }}>🔒 {liquidacion}</div>
+                        <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 4 }}>Ciérrela en Liquidaciones (se puede cerrar sin firma).</div>
+                      </>
+                    )}
                     {papeles.bloqueos.map(b => (
                       <div key={b} style={{ fontSize: 12, fontWeight: 600, color: "var(--bad-ink)", marginTop: 4 }}>{b}</div>
                     ))}
-                    <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 4 }}>Actualice la fecha en Motos › {m.placa} › Editar.</div>
+                    {papeles.bloqueos.length > 0 && (
+                      <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 4 }}>Actualice la fecha en Motos › {m.placa} › Editar.</div>
+                    )}
                   </div>
                 ))}
               </div>

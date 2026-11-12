@@ -1277,3 +1277,48 @@ De los 127 que pagaron efectivo en la oficina en los últimos 30 días, a 29 les
 **No toca:** Clientes → Editar ni el registro de clientes, donde la foto sigue siendo opcional.
 **Ojo:** Importación Excel → «Pagos históricos» (solo el dueño) mete efectivo de la oficina: con la 215 corrida, los
 pagos de clientes a los que les falta algo se frenan. No se tocó.
+
+### D-085 · 11-nov-2026 · La moto prestada que se devuelve el mismo día no se cobra
+*(Número tomado en la copia aparte de la revisión de la RMM72H. Pasó por la D-075 y la D-076, que ya eran de la sesión
+de la pizarra de los supervisores; por eso es la D-085. El renglón del historial de RAFAEL que quedó en la base dice
+«D-075»: se refiere a esta.)*
+**Decidió:** el dueño, al revisar la RMM72H (RAFAEL ANGEL LOPEZ PIÑA): *«no se le debería cobrar nada porque el mismo día
+la devolvió; cobraría si pasa al día siguiente con la moto»*.
+**Qué se decidió:**
+1. El alquiler de la moto prestada se cuenta por días de calendario entre el día en que se prestó y el día en que se
+   devolvió. Si la devuelve el mismo día: $0. Si pasa al día siguiente con ella: 1 día ($27.000). Prestada el lunes y
+   devuelta el miércoles: 2 días.
+2. Se cuenta hasta el día en que de verdad la devolvió, no hasta el día en que alguien la registra en el sistema.
+**Por qué:** RAFAEL devolvió la RML54H el 26-oct, el mismo día del préstamo (a las 6:52 p. m. entró al taller «No
+prende», la trajo él), pero la devolución se registró el 30-oct y el sistema le cobró 4 días ($108.000).
+**Cambia lo que había:** hasta hoy el sistema cobraba mínimo 1 día (`Math.max(1, …)` en `cuentaAlquiler`,
+`InmovilizacionesView.tsx`). Medido el 11-nov: de los 12 préstamos que ha habido, ninguno se devolvió el mismo día,
+así que la regla nueva solo le cambia la cuenta a RAFAEL.
+**Hecho el 11-nov:** la deuda de RAFAEL, corregida con el SQL que corrió el dueño. **Falta:** que la ventana «Devolver la moto prestada» pregunte
+qué día la devolvió. El código no está hecho.
+
+### D-086 · 11-nov-2026 · Una moto no se entrega a un cliente nuevo si la liquidación del cliente anterior no está cerrada
+*(Número tomado en la copia aparte de la revisión de la RMM72H y del taller. Primero quedó como D-077, que ya era de la
+sesión de la pizarra (Recolección con 2 días en mora); por eso es la D-086. El commit 1ec786f, el archivo de la
+migración 222 y su nota en `migraciones_aplicadas` dicen «D-077»: se refieren a esta.)*
+**Decidió:** el dueño, al revisar las motos que aparecían en el taller andando en la calle: *«que no deje entregar una
+moto sin haber liquidado el contrato que tenía antes»*. Cuando le dije que la firma demoraba, me corrigió: *«¿se te olvidó
+que se puede cerrar sin firma?»* (es así desde la mig 148).
+**Qué se decidió:**
+1. Para entregar una moto a un cliente nuevo, la liquidación del cliente anterior de esa moto tiene que estar **cerrada**,
+   con firma o sin ella. Empezada no basta.
+2. **Nadie se puede saltar el candado**, ni el dueño. Si el cliente anterior reclama la cuenta después, la liquidación
+   cerrada se puede devolver, como se hizo con la LIQ-0032.
+3. Las 10 motos que hoy ya andan con un cliente nuevo y la cuenta del anterior abierta no se tocan con el candado: se le
+   pasa a la oficina la lista de las 8 liquidaciones abiertas para cerrarlas, sin crear un aviso nuevo. Las 2 sin
+   liquidación (RNG55H y XZO72H) esperan a que liquidar ya no mande al taller una moto que tiene otro cliente.
+**Por qué:** medido el 11-nov, de 64 entregas desde el 11-sep (motos que ya habían tenido otro cliente), solo 22 se
+hicieron con la liquidación anterior cerrada. Las otras se cerraron 13 días después en el caso típico, hasta 39, o
+siguen abiertas. Lo que demora es la cuenta en la oficina, no la firma: de 34 cierres tardíos, 29 se hicieron sin firma, y
+las 8 abiertas ya tienen la revisión del taller terminada (la LIQ-0005, desde el 10-ago).
+**Cuentan como "cliente anterior":** cualquier contrato de esa moto que esté Suspendido (cliente con la moto retenida y sin
+liquidar), cualquier liquidación de un contrato de esa moto que no esté cerrada ni anulada, y un contrato Cancelado o
+Finalizado con pagos y sin liquidación. No cuentan los contratos que nunca recibieron un pago y no tienen liquidación.
+**Hecho el 11-nov:** construido y publicado (commit 1ec786f; la mig 222 la corrió el dueño a las 5:24 p. m.). Desde
+ese commit, liquidar el contrato viejo de una moto que ya tiene otro cliente no la manda al taller, así que la RNG55H
+y la XZO72H ya se pueden liquidar.

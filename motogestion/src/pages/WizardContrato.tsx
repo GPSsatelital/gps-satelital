@@ -217,7 +217,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     const tieneContrato = contratos.some(ct => ct.cliente_id === c.id && (ct.estado === "Activo" || ct.estado === "En proceso") && ct.id !== contratoId);
     return !tieneContrato;
   });
-  // D-077 (11-nov-2026): ninguna moto se entrega si la liquidación del cliente anterior no está
+  // D-086 (11-nov-2026): ninguna moto se entrega si la liquidación del cliente anterior no está
   // cerrada (con o sin firma), sin excepciones. La regla vive en la base (mig 222,
   // `motivo_moto_sin_liquidar`); acá solo se lee para mostrar el candado antes de elegir.
   const [sinLiquidar, setSinLiquidar] = useState<Map<string, string>>(new Map());
@@ -496,7 +496,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     }
     setGuardando(true); setError(null);
     try {
-      // D-077: si la liquidación del cliente anterior no está cerrada, NO se asigna (antes solo
+      // D-086: si la liquidación del cliente anterior no está cerrada, NO se asigna (antes solo
       // avisaba y dejaba seguir). Se pregunta a la base en el momento, no a la lista ya cargada:
       // alguien pudo abrir una liquidación mientras tanto. Si no se puede revisar, tampoco se sigue.
       const { data: motivoLiq, error: errLiq } = await supabase.rpc("motivo_moto_sin_liquidar", { p_moto_id: mId });

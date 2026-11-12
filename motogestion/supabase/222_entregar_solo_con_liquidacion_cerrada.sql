@@ -1,4 +1,4 @@
--- ===== 222: ninguna moto se entrega si la liquidación del cliente anterior no está cerrada (D-077) =====
+-- ===== 222: ninguna moto se entrega si la liquidación del cliente anterior no está cerrada (D-086; en la base quedó anotada como D-077) =====
 -- Pedido del dueño (11-nov-2026): «que no deje entregar una moto sin haber liquidado el contrato que
 -- tenía antes». Cerrada con firma o sin ella (el cierre sin firma existe desde la mig 148), y sin
 -- excepciones: nadie se salta el candado.

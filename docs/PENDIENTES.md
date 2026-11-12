@@ -707,9 +707,57 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 🧑 **ESTARLIS CHIQUILLO** — $368.000 contra $563.000 sin conciliar.
 
+- [ ] 💻 🔴 **RAFAEL LOPEZ PIÑA (RMM72H): alquiler de la prestada cobrado por 4 días cuando la devolvió el mismo
+  día** (medido el 11-nov, sin arreglar). La RML54H se prestó el 26-oct a las 11:38 a. m. y volvió al taller «No
+  prende» ese día a las 6:52 p. m.; la devolución se registró el 30-oct y la ventana cuenta hasta el día en que se
+  aprieta el botón → deuda de $108.000 (4 × $27.000), sin abonos. **Decidido el 11-nov (D-085): devuelta el mismo
+  día = $0.** ✅ **Datos corregidos el 11-nov** (SQL corrido por el dueño): préstamo cerrado el 26-oct, la deuda de
+  $108.000 borrada y 2 renglones en su historial; foto de antes y de después iguales a lo medido. **Falta el código:**
+  la ventana «Devolver la moto prestada» pregunta qué día la devolvió y deja de cobrar mínimo 1 día. ⚠️ **Por
+  definir:** hacerlo encima del acta (D-066, sin publicar en la copia principal, toca la misma ventana) o ya, en la
+  copia aparte. Mientras tanto, que SERGIO registre cada devolución el mismo día. De los 12 préstamos de la flota, es
+  el único con el defecto probado y el único al que la regla nueva le cambia la cuenta.
+  Detalle en la memoria `prestamo-dias-de-mas-y-taller-fantasma`.
+
+- [ ] 🧑 🔴 **(Oficina) DURIS MANUEL GONZALES (RMZ48H): $162.000 aplicados a una deuda que se borró HOY, 11-nov.**
+  A las 10:53 a. m. ANGELA registró su transferencia de $840.000 (fecha 31-oct): $678.000 fueron a semanas y
+  $162.000 a la deuda del alquiler de la RML47H; a las 10:54 la borró, ya pagada. Esos $162.000 no son semana ni
+  saldo a favor. Preguntarle a ANGELA qué quiso hacer (la devolución dice «rodó 0 km») antes de tocar nada.
+  Borrar una deuda no mira si ya tiene abonos (`useDeudas.ts:100`).
+
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 **Motos que salen «en el taller» y andan en la calle** (medido el 11-nov, sin arreglar). De 37 avisos
+  «Lleva días en el taller», **14 son de motos Asignadas que ruedan con su cliente**. La causa principal: cerrar
+  una liquidación no cierra la orden «Revisión por liquidación» que ella abrió (**21 órdenes** así, la más vieja
+  del 24-ago). Otras puertas: liquidar un contrato viejo cuando la moto ya es de otro la pone «En taller» (YAL65H,
+  STEVENS QUINTERO, Cartera lo muestra «taller» desde el 6-nov); «Entregar moto al cliente» la pone Asignada sin
+  cerrar la orden (RLZ91H, RMZ68H); RLZ94H pasó a Asignada el 9-oct sin rastro. La mig 187 (XYZ51H) nunca se
+  corrió. ⚠️ No finalizar desde Taller las órdenes de RLZ97H y DQF56I: la app las pasaría a Disponible estando
+  retenidas. 🧑 Mirar en persona RLZ77H (44 días), IEW90I (35) y MLH39H (19), y decidir si se anulan LIQ-0034 y
+  LIQ-0031, que siguen «en taller» con el cliente rodando. Plan en la memoria `prestamo-dias-de-mas-y-taller-fantasma`.
+  ✅ **Limpieza hecha el 11-nov** (SQL corrido por el dueño a las 3:17 p. m.): las 21 órdenes de liquidación cerrada
+  quedaron Finalizadas con la fecha en que se cerró cada liquidación, la de XYZ51H también (la 187 quedó anotada como
+  corrida) y la YAL65H pasó a Asignada. Medido después desde la app: las 20 motos de esas órdenes quedaron como
+  estaban (12 Asignadas contando la YAL65H, 6 Disponibles, 2 Recuperadas), el trabajo anotado de RLZ97H y YAL65H se
+  conservó, y los avisos «Lleva días en el taller» bajaron de 37 a 18 (14 de verdad en Mantenimiento + RLZ91H,
+  RLZ94H, RMZ68H y DQF56I). **Falta el código de las otras puertas** (sin aprobar): «Entregar moto al cliente» y
+  la prestada que vuelve a Disponible con la orden abierta.
+  🔒 **Decidido el 11-nov (D-086): ninguna moto se entrega a un cliente nuevo si la liquidación del cliente
+  anterior no está cerrada** (con o sin firma, sin excepciones). Hoy dejaría frenadas solo 2 de las
+  45 Disponibles: RLZ98H (LIQ-0039 en taller) y YAL58H (LIQ-0103 calculada).
+  ✅ **Construido y publicado el 11-nov (1ec786f):** mig 222 ✅ corrida por el dueño a las 5:24 p. m. (dio 1 · 1 · 2, RLZ98H y YAL58H)
+  (el candado, la vista del 🔒 y «cerrar la liquidación cierra su revisión»), paso 2 del wizard con el 🔒, y liquidar
+  un contrato viejo ya no manda al taller una moto que tiene otro cliente (`useLiquidaciones.ts`). tsc sin errores,
+  1.080 pruebas y build bien. Orden: el dueño corre la 222 → ✅ medido → ✅ paso 2 visto a 375 px → ✅ publicado el 11-nov, 5:53 p. m. (1ec786f) (no
+  lunes ni miércoles antes de las 6 p. m.).
+  🧑 **Para la oficina: cerrar estas 8 liquidaciones**, cuya moto ya tiene otro cliente. El taller ya revisó las 8 y
+  solo falta la cuenta: RNG53H LIQ-0005 (desde 10-ago) · RMZ58H LIQ-0050 · IGC57I LIQ-0080 · XZN84H LIQ-0091 ·
+  IGJ79I LIQ-0108 · IGJ80I LIQ-0117 · DQL71I LIQ-0121 · IGC52I LIQ-0126. ✅ **RNG55H y XZO72H** (contrato viejo sin
+  liquidación) ya se pueden liquidar: desde 1ec786f, liquidar no manda al taller una moto que ya
+  tiene otro cliente.
 
 - [ ] 💻 **Cabos sueltos de la primera cuota del acuerdo (D-056, vistos el 26-oct, sin aprobar).**
   `ModalAmpliarConvenio` y la recuperación del motor todavía calculan `fecha_limite` desde HOY, no desde la

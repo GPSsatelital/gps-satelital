@@ -546,6 +546,13 @@ Esta sección es CRÍTICA. Antes de tocar cualquier módulo, verificar si afecta
 ### Contrato → Liquidación
 - Liquidación inicia desde un contrato activo/suspendido
 - Si `liquidaciones.saldo_final < 0` → `clientes.lista_negra = true` automáticamente
+- 🔒 **Una moto no se entrega a un cliente nuevo si la liquidación del cliente anterior no está cerrada**
+  (con o sin firma, sin excepciones — D-086, mig 222). La regla es UNA función, `public.motivo_moto_sin_liquidar`:
+  el candado frena el paso a «Reservada» (paso 2 del wizard; la entrega del paso 6 exige que esté Reservada) y el
+  paso 2 muestra el 🔒 leyendo `motos_sin_liquidar`. Cuentan: una liquidación de esa moto sin cerrar ni anular,
+  un contrato Suspendido sin liquidación cerrada, o un Cancelado/Finalizado con pagos y sin liquidación cerrada.
+- Cerrar una liquidación cierra sola su orden «Revisión por liquidación» (mig 222). Liquidar el contrato viejo de una
+  moto que ya tiene OTRO contrato vivo no le abre revisión ni la pone «En taller»: queda en la calle con su cliente.
 
 ### Taller → Moto
 - Ingreso al taller: `motos.estado` → `"En taller"`
@@ -853,6 +860,9 @@ tránsito):
 - **No bloquea la devolución** de su moto propia: esa es la de su contrato y la sigue pagando.
 - **La cuenta de la prestada NUNCA se mezcla con la del contrato original.** El ingreso del alquiler
   pertenece al portafolio de la moto PRESTADA (es la que se desgasta), no al de la original.
+- **Se cuenta por días de calendario, hasta el día en que de verdad la devolvió** (D-085, 11-nov-2026):
+  devuelta el mismo día del préstamo = **$0**; si pasa al día siguiente con ella = 1 día. Nunca se
+  cuenta hasta el día en que alguien registra la devolución en el sistema.
 
 ### Recuperar la moto propia después de estar guardada (regla del dueño, 30-jul-2026)
 1. Se le cobra **lo que debía de ANTES de guardarla**. Eso no se rueda nunca.

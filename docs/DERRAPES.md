@@ -566,3 +566,28 @@ se mide con ESA cuenta, no con un texto que se le parece.
 «En liquidación» (hoy 5) cuenta otra cosa: contratos detenidos cuya moto ya tiene otro cliente. Lo vi al escribir la
 fila del diccionario, antes de subir; quedó «con liquidación abierta» y la ayuda explica la diferencia. **Qué lo evita:**
 antes de ponerle nombre a una cifra nueva, buscar ese nombre en el mismo módulo (regla 2 de las cifras), no solo el cálculo.
+
+### 11-nov-2026 · Dije que lo que demora cerrar una liquidación es la firma, y no lo es
+**Lo que dije:** que lo que más demora el cierre es la firma del cliente anterior, que muchas veces ya no aparece; que
+exigir la liquidación cerrada para entregar habría frenado 61 de 89 entregas (cerca de 1.000 días de moto parada, unos
+$27 millones), y por eso recomendé exigir solo «empezada y con la revisión del taller cerrada».
+**Lo que era verdad:** desde la mig 148 una liquidación se cierra sin firma. Medido después: de 34 cierres tardíos, 29
+se hicieron sin firma. Lo que demora es la cuenta en la oficina, no la firma, así que la cuenta de los $27 millones
+salía de una causa falsa.
+**Por qué me equivoqué:** recomendé sobre lo que recordaba del flujo, sin medir cómo se cierran de verdad las
+liquidaciones.
+**Quién lo cazó:** el dueño: *«¿se te olvidó que se puede cerrar sin firma?»*.
+**Qué lo evita ahora:** antes de recomendar una regla que depende de cómo se usa un flujo, medir en la base cómo se usa
+(aquí: cuántos cierres llevan firma), no suponerlo.
+
+### 11-nov-2026 · Tomé dos números de decisión que ya eran de otra sesión
+**Lo que dije:** que la prestada del mismo día era la D-075 y luego la D-076, y que el candado de liquidación era la D-077.
+**Lo que era verdad:** la sesión de la pizarra, que trabaja en la copia principal al mismo tiempo, ya iba de la D-075 a la
+D-083, y otra copia aparte tenía la D-084. Quedaron D-085 y D-086. El commit 1ec786f, la nota de la mig 222 en la base y
+un renglón del historial de RAFAEL ya habían salido con el número viejo y no se cambian.
+**Por qué me equivoqué:** miré solo el `DECISIONES.md` de mi copia aparte, que no ve lo que las otras copias escriben sin
+subir. La primera vez lo corregí renumerando, pero sin mirar las otras copias, y volvió a chocar.
+**Quién lo cazó:** yo, la primera vez antes de publicar y la segunda después; las dos al comparar con la copia principal.
+**Qué lo evita ahora:** antes de tomar un número de decisión (o de migración) en una copia aparte, mirar el más alto en
+TODAS las copias: la principal y cada `.claude/worktrees/*/docs/DECISIONES.md`. Anotado en la memoria
+`prestamo-dias-de-mas-y-taller-fantasma`. Todavía no hay un candado automático.

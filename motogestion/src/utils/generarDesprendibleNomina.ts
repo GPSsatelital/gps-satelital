@@ -55,7 +55,7 @@ export function htmlDesprendibleNomina(
       <td class="placa">${r.placa}</td>
       <td style="color:#64748b;font-size:10.5px">${r.grupo}</td>
       <td style="text-transform:uppercase">${r.cliente}</td>
-      <td>${TIPO_LABEL[r.tipo]}</td>
+      <td>${TIPO_LABEL[r.tipo]}${r.porque ? `<div class="detalle">${r.porque}</div>` : ""}</td>
       <td>${fechaCorta(r.fecha)}</td>
       <td class="num">${cop(r.valor)}</td>
     </tr>`).join("");

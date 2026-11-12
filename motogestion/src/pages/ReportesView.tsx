@@ -531,7 +531,7 @@ export default function ReportesView({ onNavigate }: Props) {
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
       convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, cubre_periodo_hasta: cv.cubre_periodo_hasta, fecha_primera_cuota: cv.fecha_primera_cuota, deuda_total: cv.deuda_total, partitura: cv.partitura, created_at: cv.created_at })),
-      visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
+      visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado, created_at: v.created_at })),
       // Quién trajo a cada cliente (mig 153): $30.000 a esa persona en la semana de la entrega.
       referidos: clientes
         .filter(c => c.referido_por_funcionario)
@@ -2184,9 +2184,10 @@ export default function ReportesView({ onNavigate }: Props) {
   const irDesdeMoto = (motoId: string) => { const c = contratoDeMotoN(motoId); setDetalle(null); if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", motoId); };
   const filaRenglon = (r: GestionNomina, i: number, quien?: string | null): FilaDetalle => ({
     id: `${r.motoId}|${r.tipo}|${r.fecha}|${i}`, placa: r.placa, grupo: r.grupo, titulo: r.cliente,
-    subtitulo: `${TIPO_NOMINA[r.tipo]} · ${fechaCortaN(r.fecha)}${quien !== undefined ? ` · ${nombreCobradorN(quien)}` : ""}`,
+    // La atrasada dice qué semana era y por qué llegó tarde (D-084), en vez de solo la fecha.
+    subtitulo: `${TIPO_NOMINA[r.tipo]} · ${r.porque ?? fechaCortaN(r.fecha)}${quien !== undefined ? ` · ${nombreCobradorN(quien)}` : ""}`,
     monto: r.valor, montoColor: "var(--ok-ink)", filtro: r.tipo, onClick: () => irDesdeMoto(r.motoId),
-    csv: { Placa: r.placa, Cliente: r.cliente, Grupo: r.grupo, Pago: TIPO_NOMINA[r.tipo], Fecha: r.fecha, Valor: r.valor, ...(quien !== undefined ? { Cobrador: nombreCobradorN(quien) } : {}) },
+    csv: { Placa: r.placa, Cliente: r.cliente, Grupo: r.grupo, Pago: TIPO_NOMINA[r.tipo], "Por qué": r.porque ?? "", Fecha: r.fecha, Valor: r.valor, ...(quien !== undefined ? { Cobrador: nombreCobradorN(quien) } : {}) },
   });
   const chipsTipos = (rs: GestionNomina[], extra: { clave: string; etiqueta: string }[] = []) => {
     const tipos = (Object.keys(TIPO_NOMINA) as TipoGestion[]).filter(t => rs.some(r => r.tipo === t));
@@ -2586,7 +2587,7 @@ export default function ReportesView({ onNavigate }: Props) {
       secciones: bloquesPor(filas, x => x.r.grupo, x => nombreCobradorN(x.quien), separar).map(b => ({
         titulo: `${b.nombre}   —   ${b.items.length} pagos · $${fmt(b.items.reduce((a, x) => a + x.r.valor, 0))}`, color: b.color,
         filas: b.items.map(x => [{ v: x.r.placa, align: "center" as const }, x.r.cliente.toUpperCase(), (separar === "cobrador" ? x.r.grupo : nombreCobradorN(x.quien)).toUpperCase(),
-          TIPO_NOMINA[x.r.tipo], { v: fmtFechaCorta(x.r.fecha), align: "center" as const }, { num: x.r.valor, align: "right" as const }]),
+          x.r.porque ? `${TIPO_NOMINA[x.r.tipo]} · ${x.r.porque}` : TIPO_NOMINA[x.r.tipo], { v: fmtFechaCorta(x.r.fecha), align: "center" as const }, { num: x.r.valor, align: "right" as const }]),
       })),
       totalGeneral: [{ v: `TOTAL: ${filas.length} pagos`, bold: true }, "", "", "", "", { num: filas.reduce((a, x) => a + x.r.valor, 0), align: "right" as const, bold: true }],
     });

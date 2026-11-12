@@ -567,6 +567,20 @@ se mide con ESA cuenta, no con un texto que se le parece.
 fila del diccionario, antes de subir; quedó «con liquidación abierta» y la ayuda explica la diferencia. **Qué lo evita:**
 antes de ponerle nombre a una cifra nueva, buscar ese nombre en el mismo módulo (regla 2 de las cifras), no solo el cálculo.
 
+### Puse la visita única a correr desde el 26-oct sin preguntar, y escribí un archivo fuera del proyecto (11-nov)
+**Lo que pasó:** en la revisión de la nómina de CARLOS ARIZA (D-084), en la lista de «terminada» puse que la visita
+repetida dejaba de pagarse desde la semana del 26-oct, con la misma fecha que el orden de pago. El dueño corrigió:
+*«no eso cuenta como una sola visita siempre lo de repetir visitas»*. Y al publicar, para guardar la huella de los
+archivos antes de tocarlos, escribí con una ruta relativa (`../../../../huella_antes.tmp`) que cayó en
+`Documents\GitHub`, fuera del proyecto. Lo borré en la misma revisión.
+**Por qué:** le apliqué a la visita la fecha de arranque del otro arreglo sin preguntar si era un error de siempre (vale
+para todas las semanas) o una regla nueva (arranca un día). Y la ruta relativa dependía de la carpeta en que estaba la
+consola en ese momento.
+**Quién lo cazó:** el dueño, lo de la visita; yo, el archivo suelto, al leer lo que mostró el comando.
+**Qué lo evita ahora:** cuando un arreglo trae fecha de arranque, preguntar por cada parte si es un error de siempre o
+una regla desde un día. Los archivos de trabajo se escriben siempre con la ruta completa de la carpeta temporal de la
+sesión, nunca con una ruta relativa.
+
 ### 11-nov-2026 · Dije que lo que demora cerrar una liquidación es la firma, y no lo es
 **Lo que dije:** que lo que más demora el cierre es la firma del cliente anterior, que muchas veces ya no aparece; que
 exigir la liquidación cerrada para entregar habría frenado 61 de 89 entregas (cerca de 1.000 días de moto parada, unos

@@ -91,3 +91,30 @@ describe("el comprobante del pago del 15 y el 30", () => {
     expect(html).toContain("recibí conforme");
   });
 });
+
+describe("el papel explica cada renglón (revisión del 11-nov-2026, D-084)", () => {
+  it("la semana atrasada dice cuál era y por qué llegó tarde, debajo de la gestión", () => {
+    const porque = "Semana del 5 al 11 de oct: la pagó el 9 de oct, pero la cuota del acuerdo llegó el 17 de oct.";
+    const h = papel([gestion({ tipo: "ciclo_atrasado", valor: 3750, fecha: "2026-10-17", porque })]);
+    expect(h).toContain(`Ciclo atrasado (50%)<div class="detalle">${porque}</div>`);
+  });
+
+  it("la que abonó sin completar dice cuánto, y la recién entregada cuándo es su primer cobro", () => {
+    const h = papel([gestion()], {
+      motosAsignadas: 3,
+      sinGestion: [
+        falta({ detalle: "Abonó $200.000 de $202.000: le faltaron $2.000." }),
+        falta({ motoId: "m7", placa: "IGC44I", motivo: "no_tocaba", detalle: "Recién entregada el 29 de oct: su primer cobro es el lunes 2 de nov" }),
+      ],
+    });
+    expect(h).toContain("Abonó $200.000 de $202.000: le faltaron $2.000.");
+    expect(h).toContain("IGC44I");
+    expect(h).toContain("Recién entregada el 29 de oct: su primer cobro es el lunes 2 de nov");
+    expect(h).toContain("3 motos asignadas · 1 con gestión · 2 sin gestión");
+  });
+
+  it("un renglón de un cierre viejo, sin explicación, sale como siempre", () => {
+    const h = papel([gestion({ tipo: "ciclo_atrasado", valor: 3750 })]);
+    expect(h).toContain("<td>Ciclo atrasado (50%)</td>");
+  });
+});

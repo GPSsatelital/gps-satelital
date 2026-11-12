@@ -1170,3 +1170,240 @@ describe("revisión de la nómina de CARLOS ARIZA (31-oct-2026, D-060)", () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// REVISIÓN DE LA NÓMINA DEL 11-NOV-2026 (CARLOS ARIZA, «atrasado aunque pagó a tiempo» y «motos
+// que ni siquiera aparecen»). Casos armados como los reales: DPU58I, IEW53I, DQL74I, IGC44I, NHT77I.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe("revisión de la nómina del 11-nov-2026", () => {
+  // La caja 6 se exige el lunes 2-nov, la 7 el 9-nov, la 8 el 16-nov.
+  const C6: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-11-02", cajas_pagadas: 5 };
+  const pg = (id: string, fecha: string, anotado: string, tarifa: number, extra: Partial<PagoNomina> = {}): PagoNomina =>
+    ({ id, contrato_id: "ct1", fecha, created_at: anotado, estado: "Confirmado", valor: tarifa, aplicado_tarifa: tarifa, ...extra });
+  const ev = (caja: number, fecha: string, pago_id: string | null, fuente: "pago" | "convenio" = "pago") =>
+    ({ contrato_id: "ct1", caja_numero: caja, fecha, fuente, pago_id });
+  const base = { motos: MOTOS, clientesPorId: CLIENTES, recepciones: [] };
+  const sem = (desde: string, hasta: string, o: Record<string, unknown>) =>
+    nominaSemanaDetallada({ ...base, desde, hasta, contratos: [C6], pagos: [], eventos: [], ...o } as never);
+
+  describe("A · las semanas atrasadas", () => {
+    it("semana vieja pagada en otra semana: atrasada, $3.750 (IEW53I)", () => {
+      const r = sem("2026-11-09", "2026-11-15", {
+        contratos: [{ ...C6, cajas_pagadas: 6 }],
+        pagos: [pg("p1", "2026-11-11", "2026-11-11T15:00:00Z", 202000)],
+        eventos: [ev(6, "2026-11-11", "p1")],
+      });
+      expect(r.nominas[0].ciclosAtrasados).toBe(1);
+      expect(r.nominas[0].total).toBe(VALOR_ATRASADO);
+      expect(r.nominas[0].renglones[0]).toMatchObject({ tipo: "ciclo_atrasado", fecha: "2026-11-11" });
+      expect(r.nominas[0].renglones[0].porque).toBe("Semana del 2 al 8 de nov: la pagó el 11 de nov, cuando ya corría otra semana.");
+    });
+
+    it("semana a tiempo pero la cuota del acuerdo llegó la semana siguiente: atrasada (DPU58I)", () => {
+      const r = sem("2026-11-09", "2026-11-15", {
+        contratos: [{ ...C6, cajas_pagadas: 6 }],
+        convenios: [{ contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 16, created_at: "2026-10-26T00:00:00Z" }],
+        pagos: [
+          pg("p3", "2026-11-03", "2026-11-03T15:00:00Z", 202000),
+          { id: "c1", contrato_id: "ct1", fecha: "2026-11-10", created_at: "2026-11-10T15:00:00Z", estado: "Confirmado", valor: 60000, aplicado_convenio: 60000 },
+        ],
+        eventos: [ev(6, "2026-11-03", "p3")],
+      });
+      expect(r.nominas[0].ciclosAtrasados).toBe(1);
+      expect(r.nominas[0].renglones[0]).toMatchObject({ tipo: "ciclo_atrasado", fecha: "2026-11-10", pagadoEl: "2026-11-10" });
+      expect(r.nominas[0].renglones[0].porque).toBe("Semana del 2 al 8 de nov: la pagó el 3 de nov, pero la cuota del acuerdo llegó el 10 de nov.");
+    });
+
+    it("la semana a tiempo no trae explicación: no hace falta", () => {
+      const r = sem("2026-11-02", "2026-11-08", {
+        contratos: [{ ...C6, cajas_pagadas: 6 }],
+        pagos: [pg("p1", "2026-11-03", "2026-11-03T15:00:00Z", 202000)],
+        eventos: [ev(6, "2026-11-03", "p1")],
+      });
+      expect(r.nominas[0].renglones[0].tipo).toBe("ciclo");
+      expect(r.nominas[0].renglones[0].porque).toBeUndefined();
+    });
+
+    it("quincenal: dice «Quincena» con sus fechas", () => {
+      const q: ContratoNomina = { ...CONTRATO, forma_pago: "Quincenal", dias_pago_mes: [3, 18], dia_pago: "", fecha_inicio_cajas: "2026-11-03", cajas_pagadas: 6 };
+      const r = sem("2026-11-23", "2026-11-29", {
+        contratos: [q],
+        pagos: [pg("p1", "2026-11-24", "2026-11-24T15:00:00Z", 435000)],
+        eventos: [ev(6, "2026-11-24", "p1")],
+      });
+      expect(r.nominas[0].renglones[0].porque).toBe("Quincena del 3 al 17 de nov: la pagó el 24 de nov, cuando ya corría otra semana.");
+    });
+  });
+
+  describe("A · lo que abonó el que no completó", () => {
+    it("abonó $200.000 de $202.000: sale «No pagó su semana», $0 (DQL74I)", () => {
+      const r = sem("2026-11-02", "2026-11-08", {
+        contratos: [{ ...C6, caja_actual_pagado: 200000 }],
+        pagos: [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 200000)],
+      });
+      expect(r.nominas).toHaveLength(0);
+      const sg = r.sinGestion.find(x => x.placa === "ABC12D");
+      expect(sg?.motivo).toBe("no_pago");
+      expect(sg?.detalle).toBe("Abonó $200.000 de $202.000: le faltaron $2.000.");
+    });
+
+    it("y si los completó después, dice cuándo — comprobado contra la anotación de esa semana", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 200000), pg("p2", "2026-11-10", "2026-11-10T15:00:00Z", 2000)];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, cajas_pagadas: 6 }], pagos, eventos: [ev(6, "2026-11-10", "p2")] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $200.000 de $202.000: le faltaron $2.000. Los completó el 10 de nov.");
+    });
+
+    it("si la anotación dice que la completó otro pago, no se dice cuánto le faltó: no se inventa", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 200000), pg("p2", "2026-11-10", "2026-11-10T15:00:00Z", 2000), pg("p3", "2026-11-12", "2026-11-12T15:00:00Z", 202000)];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, cajas_pagadas: 7 }], pagos, eventos: [ev(6, "2026-11-12", "p3"), ev(7, "2026-11-12", "p3")] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $200.000 esta semana, pero no completó lo que le tocaba.");
+    });
+
+    it("con lo que ya tenía de antes, lo dice así", () => {
+      const pagos = [pg("p0", "2026-10-30", "2026-10-30T15:00:00Z", 50000), pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 150000)];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, caja_actual_pagado: 200000 }], pagos });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $150.000 esta semana. A su semana, con los $50.000 que ya tenía, le faltaron $2.000.");
+    });
+
+    it("si iba atrasado, dice que la plata fue a la semana que debía de antes", () => {
+      // Debía la caja 6 (del 2-nov) y en la semana del 9 abonó $92.000 a esa.
+      const pagos = [pg("p1", "2026-11-10", "2026-11-10T15:00:00Z", 92000)];
+      const r = sem("2026-11-09", "2026-11-15", { contratos: [{ ...C6, caja_actual_pagado: 92000 }], pagos });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $92.000 esta semana. A la semana que debía de antes le faltaron $110.000.");
+    });
+
+    it("dice a dónde se fue lo que no entró a su semana (RMY52H)", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 55000, { valor: 100000, aplicado_deuda: 45000 })];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, caja_actual_pagado: 55000 }], pagos });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $100.000 esta semana: $55.000 a su semana y $45.000 a deudas. A su semana le faltaron $147.000.");
+    });
+
+    it("lo que fue al acuerdo dice «al acuerdo», no «a el acuerdo» (IEW51I)", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 150000, { valor: 180000, aplicado_convenio: 30000 })];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, caja_actual_pagado: 150000 }], pagos });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $180.000 esta semana: $150.000 a su semana y $30.000 al acuerdo. A su semana le faltaron $52.000.");
+    });
+
+    it("si todo se fue a otra cosa, dice «todo a deudas»", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 0, { valor: 45000, aplicado_deuda: 45000 })];
+      const r = sem("2026-11-02", "2026-11-08", { pagos });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toMatch(/^Abonó \$45\.000 esta semana: todo a deudas\./);
+    });
+
+    it("con un acuerdo que marcó semanas en esa semana, solo dice cuánto abonó (IEW66I)", () => {
+      const pagos = [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 192000)];
+      const r = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, cajas_pagadas: 7 }], pagos, eventos: [ev(6, "2026-11-06", null, "convenio"), ev(7, "2026-11-06", null, "convenio")] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBe("Abonó $192.000 esta semana, pero no completó lo que le tocaba.");
+    });
+
+    it("el que no abonó nada sigue diciendo «No pagó su semana», sin más", () => {
+      const r = sem("2026-11-02", "2026-11-08", {});
+      const sg = r.sinGestion.find(x => x.placa === "ABC12D");
+      expect(sg?.motivo).toBe("no_pago");
+      expect(sg?.detalle).toBeUndefined();
+    });
+
+    it("un pago sin confirmar no cuenta como abono", () => {
+      const r = sem("2026-11-02", "2026-11-08", { pagos: [pg("p1", "2026-11-04", "2026-11-04T15:00:00Z", 200000, { estado: "Pendiente" })] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle).toBeUndefined();
+    });
+  });
+
+  describe("B · la moto recién entregada", () => {
+    const nuevo: ContratoNomina = {
+      ...CONTRATO, es_migrado: false, cajas_previas: 0, cajas_pagadas: 1, prorrateo_total: 47000, prorrateo_pagado: 0,
+      fecha_entrega: "2026-10-29", fecha_inicio_cajas: "2026-11-02",
+    };
+    const visita = { id: "v1", cliente_id: "cl1", realizada_por: "LUMAR", fecha: "2026-10-28", estado: "Completada" };
+    const RECIEN = "Recién entregada el 29 de oct: su primer cobro es el lunes 2 de nov";
+    it("la visita es de otra persona: se le paga a ella, y la moto SÍ sale en la lista del supervisor (IGC44I)", () => {
+      const r = sem("2026-10-26", "2026-11-01", { contratos: [nuevo], visitas: [visita] });
+      expect(r.nominas.find(n => n.subadminId === "LUMAR")?.visitas).toBe(1);
+      expect(r.nominas.find(n => n.subadminId === "PEDRO")).toBeUndefined();
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")).toMatchObject({ motivo: "no_tocaba", cobradorId: "PEDRO", detalle: RECIEN });
+    });
+    it("sin visita de nadie: también dice que es recién entregada y cuándo es su primer cobro", () => {
+      const r = sem("2026-10-26", "2026-11-01", { contratos: [nuevo] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")).toMatchObject({ motivo: "no_tocaba", detalle: RECIEN });
+    });
+    it("si la visita la hizo el mismo supervisor, la moto no sale como «sin pago»: esa semana sí le generó plata", () => {
+      const r = sem("2026-10-26", "2026-11-01", { contratos: [nuevo], visitas: [{ ...visita, realizada_por: "PEDRO" }] });
+      expect(r.nominas.find(n => n.subadminId === "PEDRO")?.visitas).toBe(1);
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")).toBeUndefined();
+    });
+    it("un contrato migrado del cuaderno no se llama «recién entregada»", () => {
+      const r = sem("2026-10-26", "2026-11-01", { contratos: [{ ...nuevo, es_migrado: true }] });
+      expect(r.sinGestion.find(x => x.placa === "ABC12D")?.detalle ?? "").not.toContain("Recién entregada");
+    });
+  });
+
+  describe("C · las visitas repetidas", () => {
+    const entregado: ContratoNomina = { ...CONTRATO, fecha_entrega: "2026-10-22" };
+    const v = (id: string, quien: string, fecha: string, creada: string) =>
+      ({ id, cliente_id: "cl1", realizada_por: quien, fecha, estado: "Completada", created_at: creada });
+    it("la misma visita hecha 3 veces se paga UNA vez, también en las semanas de antes del 26-oct (NHT77I)", () => {
+      const r = sem("2026-10-19", "2026-10-25", {
+        contratos: [entregado],
+        visitas: [v("a", "LUMAR", "2026-10-21", "2026-10-21T17:36:00Z"), v("b", "LUMAR", "2026-10-21", "2026-10-21T17:41:00Z"), v("c", "LUMAR", "2026-10-21", "2026-10-21T17:45:00Z")],
+      });
+      expect(r.nominas.find(n => n.subadminId === "LUMAR")?.total).toBe(VALOR_VISITA);
+    });
+    it("si dos personas visitaron, se paga la última, la que quedó buena", () => {
+      const r = sem("2026-10-19", "2026-10-25", {
+        contratos: [entregado],
+        visitas: [v("a", "ALVAREZ", "2026-10-15", "2026-10-15T10:00:00Z"), v("b", "LUMAR", "2026-10-20", "2026-10-20T10:00:00Z")],
+      });
+      expect(r.nominas.find(n => n.subadminId === "LUMAR")?.visitas).toBe(1);
+      expect(r.nominas.find(n => n.subadminId === "ALVAREZ")).toBeUndefined();
+    });
+    it("una visita rechazada no tapa a la buena", () => {
+      const r = sem("2026-10-19", "2026-10-25", {
+        contratos: [entregado],
+        visitas: [v("a", "LUMAR", "2026-10-20", "2026-10-20T10:00:00Z"), { ...v("b", "ALVAREZ", "2026-10-21", "2026-10-21T10:00:00Z"), estado: "Rechazada" }],
+      });
+      expect(r.nominas.find(n => n.subadminId === "LUMAR")?.visitas).toBe(1);
+    });
+    it("cada entrega nueva del cliente sigue pagando su propia visita", () => {
+      const r = sem("2026-10-19", "2026-10-25", {
+        contratos: [entregado, { ...entregado, id: "ct2", fecha_entrega: "2026-10-24" }],
+        visitas: [v("a", "LUMAR", "2026-10-21", "2026-10-21T10:00:00Z"), v("b", "LUMAR", "2026-10-23", "2026-10-23T10:00:00Z")],
+      });
+      expect(r.nominas.find(n => n.subadminId === "LUMAR")?.visitas).toBe(2);
+    });
+  });
+
+  describe("D · pagos anotados al revés SIN saldo a favor", () => {
+    // Pagó la caja 6 el 4-nov y la 7 el 10-nov; la oficina anotó primero el del 10. El motor llenó la
+    // caja 6 con la plata del 10 y la 7 con la del 4.
+    const pagos = [
+      pg("pB", "2026-11-10", "2026-11-11T10:00:00Z", 202000),
+      pg("pA", "2026-11-04", "2026-11-11T11:00:00Z", 202000),
+    ];
+    const eventos = [ev(6, "2026-11-11", "pB"), ev(7, "2026-11-11", "pA")];
+    it("las dos semanas salen A TIEMPO, cada una en la semana en que el cliente la pagó", () => {
+      const a = sem("2026-11-02", "2026-11-08", { contratos: [{ ...C6, cajas_pagadas: 7 }], pagos, eventos });
+      const b = sem("2026-11-09", "2026-11-15", { contratos: [{ ...C6, cajas_pagadas: 7 }], pagos, eventos });
+      expect(a.nominas[0]).toMatchObject({ ciclosATiempo: 1, ciclosAtrasados: 0, total: VALOR_CICLO });
+      expect(a.nominas[0].renglones[0].fecha).toBe("2026-11-04");
+      expect(b.nominas[0]).toMatchObject({ ciclosATiempo: 1, ciclosAtrasados: 0, total: VALOR_CICLO });
+      expect(b.nominas[0].renglones[0].fecha).toBe("2026-11-10");
+    });
+    it("pagos en orden: no entra a la cuenta de los días, nada cambia", () => {
+      const enOrden = [pg("pA", "2026-11-04", "2026-11-04T10:00:00Z", 202000), pg("pB", "2026-11-10", "2026-11-10T10:00:00Z", 202000)];
+      expect(semanasEnOrdenDePago({ ...C6, cajas_pagadas: 7 }, enOrden, [ev(6, "2026-11-04", "pA"), ev(7, "2026-11-10", "pB")], [], true)).toBeNull();
+    });
+    it("antes del 26-oct se queda igual (mismas fechas, un mes antes)", () => {
+      const viejo = [pg("pB", "2026-10-13", "2026-10-14T10:00:00Z", 202000), pg("pA", "2026-10-07", "2026-10-14T11:00:00Z", 202000)];
+      const evViejo = [ev(6, "2026-10-14", "pB"), ev(7, "2026-10-14", "pA")];
+      const c = { ...C6, fecha_inicio_cajas: "2026-10-05", cajas_pagadas: 7 };
+      const totales = ["2026-10-05", "2026-10-12"].map(l => sem(l, masDiasT(l, 6), { contratos: [c], pagos: viejo, eventos: evViejo }).nominas.reduce((s, n) => s + n.total, 0));
+      expect(totales).toEqual([0, VALOR_CICLO + VALOR_ATRASADO]);
+    });
+  });
+});
+
+function masDiasT(iso: string, n: number) {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}

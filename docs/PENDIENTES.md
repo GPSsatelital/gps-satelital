@@ -10,6 +10,19 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **10-nov-2026**.
 
+> ✅ **(11-nov) La nómina explica cada renglón (D-084): PUBLICADA el 11-nov, después de las 6 p. m.** Cinco archivos:
+> `nominaCobradores.ts` y su prueba, `generarDesprendibleNomina.ts` y su prueba, y `ReportesView.tsx`. Sin migración.
+> Falta mirarla con el dueño en la nómina de la semana del 9-nov.
+> Lo que encontró la revisión y quedó sin tocar:
+> - [ ] 💻 **9 motos con dos contratos vivos a la vez** (DQL71I, IGJ79I, RNG53H, XZN84H, IGC57I, IGJ80I, XZO72H,
+>   IGC52I, RMZ58H). El reverso de la nómina toma el primero que encuentra: puede dar el motivo del contrato equivocado.
+>   Revisar uno por uno cuál sobra.
+> - [ ] 💻 **RML54H tiene `fecha_fin_cobro` = 9-sep-2025** (un año antes de que existiera la app). Parece mal escrita.
+> - [ ] 🧑 **Cómo se pagaron las semanas de antes del 26-oct** (por fuera de la app): no se sabe. Las visitas repetidas
+>   de esas semanas ($280.000) no se descuentan, por decisión del dueño.
+> - [ ] 💻 **3 abonos que no cuadran con lo que anotó el motor** (IEW87I, XZI01H, IGC49I): la nómina solo dice
+>   «Abonó $X esta semana». Ver por qué la cuenta hacia atrás no da.
+
 > 🔴 **AL ARRANCAR (7-nov) — EN EL OTRO PC.** El dueño dijo que no se vuelve a trabajar en el PC de la oficina. La
 > mudanza está en `P:\MUDANZA-2026-11-07`: puesta al día y comprobada el 10-nov, con los stickers de la XTZ 250 y el
 > canal de YouTube; la copia final con Claude cerrado la corre el dueño

@@ -1278,6 +1278,39 @@ De los 127 que pagaron efectivo en la oficina en los últimos 30 días, a 29 les
 **Ojo:** Importación Excel → «Pagos históricos» (solo el dueño) mete efectivo de la oficina: con la 215 corrida, los
 pagos de clientes a los que les falta algo se frenan. No se tocó.
 
+### D-084 · 11-nov-2026 · Nómina: cada renglón dice por qué, ninguna moto queda por fuera, una visita por entrega y siempre el orden en que pagó el cliente
+**Decidió:** el dueño, al revisar la nómina de CARLOS ARIZA (atrasadas que el cliente «pagó a tiempo» y motos que «ni
+siquiera aparecen», semanas del 12-oct al 2-nov): «Explicar cada renglón · Una visita por cliente · Orden del día en que
+pagó» · «Sí, que salgan» · «eso cuenta como una sola visita siempre lo de repetir visitas» · «ya dejemoslo asi pero
+corrijamos que no vuelva a pasar nunca mas» · «Sí, arranca».
+**Qué encontró la revisión:**
+- Las 62 atrasadas de Ariza estaban bien contadas: 23 eran la cuota del acuerdo que llegó tarde (semana y cuota son un
+  solo pago, D-022) y 39 una semana vieja pagada cuando ya corría otra. Lo que faltaba era decir por qué.
+- 23 motos (10 de Ariza) no salían en el papel: ni con renglón ni en «No se pagó». Era la moto recién entregada cuya
+  visita la hizo otra persona.
+- La visita repetida («Repetir») se pagaba otra vez: $280.000 de más del 24-ago al 25-oct (Lumar $240.000: DQL79I,
+  NGY20I, NGY97I y NHT77I tres veces; Alvarez $40.000: IGJ88I). Siempre la misma persona, minutos después.
+- El orden de pago de la D-059 solo se usaba si hubo saldo a favor. Sin él, la nómina tomaba el día de la última
+  transferencia anotada aunque ese día el cliente no hubiera completado la semana (IEW51I: el 29-oct llevaba $50.000 de
+  $202.000; la completó el 4-nov).
+**Qué se decidió:**
+1. Cada semana atrasada dice cuál era y por qué: «Semana del 19 al 25 de oct: la pagó el 1 de nov, cuando ya corría
+   otra semana» o «…: la pagó el 20 de oct, pero la cuota del acuerdo llegó el 30 de oct». En pantalla, papel y descarga.
+2. «No pagó su semana» dice cuánto abonó: «Abonó $200.000 de $202.000: le faltaron $2.000. Los completó el 2 de nov.»
+   El «le faltaron» sale solo si la cuenta hacia atrás cuadra con lo que anotó el motor; si no, «Abonó $X esta semana».
+3. Ninguna moto asignada queda por fuera: «Recién entregada el 29 de oct: su primer cobro es el lunes 2 de nov».
+4. Una entrega paga UNA visita, en todas las semanas (también antes del 26-oct): la última hecha antes de la entrega.
+   Lo ya pagado de más no se descuenta.
+5. Desde la semana del 26-oct la nómina cuenta SIEMPRE la plata en el orden de los días en que pagó el cliente (la D-059
+   lo hacía solo con saldo a favor). Las semanas de antes del 26-oct no cambian, salvo las visitas.
+**Efecto (medido con el código nuevo contra el de hoy, 24-ago al 15-nov):** antes del 26-oct solo salen las 7 visitas
+repetidas (−$280.000, ya pagadas por fuera). Desde el 26-oct: Ariza −$7.500 en la semana del 26-oct y +$3.750 en la del
+2-nov (IEW51I pasa de «a tiempo» a «atrasada»); 5 renglones cambian de día sin cambiar plata (RML48H, DPU51I, IGJ74I,
+RML55H, NGY94I). Nadie más se mueve. Ninguna semana estaba cerrada (`nomina_cierres` vacía).
+**Dónde vive:** `nominaCobradores.ts` (`porQueAtrasada`, `abonoSinCompletar`, el reverso, las visitas y
+`semanasEnOrdenDePago` con `cualquierDesorden`), `generarDesprendibleNomina.ts` y `ReportesView.tsx`. Sin migración. 29
+pruebas nuevas. ZALA no lee la nómina (`docs/DICCIONARIO-ESTADOS.md` → C28).
+
 ### D-085 · 11-nov-2026 · La moto prestada que se devuelve el mismo día no se cobra
 *(Número tomado en la copia aparte de la revisión de la RMM72H. Pasó por la D-075 y la D-076, que ya eran de la sesión
 de la pizarra de los supervisores; por eso es la D-085. El renglón del historial de RAFAEL que quedó en la base dice

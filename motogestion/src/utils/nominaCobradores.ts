@@ -155,6 +155,8 @@ export type VisitaNomina = {
   realizada_por: string | null;
   fecha: string;
   estado: string;
+  /** Para saber cuál fue la última, cuando la misma visita se hizo varias veces el mismo día. */
+  created_at?: string | null;
 };
 
 export type GestionNomina = {
@@ -174,6 +176,12 @@ export type GestionNomina = {
    */
   pagadoEl?: string;
   valor: number;
+  /**
+   * Por qué salió atrasada, en palabras (11-nov-2026, D-084): qué semana era y qué día llegó cada
+   * pata. «Semana del 5 al 11 de oct: la pagó el 9 de oct, pero la cuota del acuerdo llegó el 17 de
+   * oct.» Solo lo traen las atrasadas; los cierres de antes no lo tienen y se muestran como siempre.
+   */
+  porque?: string;
   /**
    * Quién cobra ESTE renglón. Si no viene, lo cobra el dueño de la moto (`motos.subadmin_id`),
    * que es como funciona todo lo demás. Las VISITAS lo traen explícito: las paga quien la hizo,
@@ -216,8 +224,10 @@ export type NominaCobrador = {
  *   falta_convenio ...... la caja SÍ se llenó esta semana, pero falta la cuota del convenio. Es la
  *                         regla del paquete, no un descuido: el cliente pagó a medias.
  *   adelantada .......... la semana que se cobraba esta semana ya estaba pagada desde antes (D-060).
- *   no_tocaba ........... esta semana no se le cobraba nada (quincenal o mensual) y no debía nada (D-060).
- *   no_pago ............. contrato activo que no pagó lo que se le cobraba. Esto sí es mora.
+ *   no_tocaba ........... esta semana no se le cobraba nada (quincenal o mensual) y no debía nada (D-060),
+ *                         o la moto se acaba de entregar y su primer cobro es después (D-084).
+ *   no_pago ............. contrato activo que no pagó lo que se le cobraba. Esto sí es mora. Si abonó algo,
+ *                         el detalle dice cuánto y, cuando se sabe con exactitud, cuánto le faltó (D-084).
  *   cambio_supervisor ... la moto pasó a otro supervisor durante la semana y lo que pagó el cliente
  *                         fue después del cambio: se le cuenta al que la recibió (D-061). Se decide
  *                         antes que todos los demás, porque esa moto sí generó pago, pero para otro.
@@ -289,6 +299,8 @@ export type PagoNomina = {
   /** Para seguir el saldo a favor hasta el pago que lo generó (pagos anotados en desorden). */
   valor?: number;
   aplicado_saldo_favor?: number | null;
+  /** Solo para decir a dónde se fue lo que abonó el que no completó su semana (D-084). */
+  aplicado_deuda?: number | null;
 };
 
 export type MotoNomina = { id: string; placa: string; subadmin_id: string | null; grupo?: string | null };
@@ -465,11 +477,122 @@ function fechaCorta(iso: string): string {
   return `${d} de ${MESES_CORTOS[m - 1]}`;
 }
 /** «del 19 al 25 de oct» · «del 26 de oct al 1 de nov» */
+function rangoCorto(desdeISO: string, hastaISO: string): string {
+  const [, mA, dA] = dia(desdeISO).split("-").map(Number);
+  const [, mB, dB] = dia(hastaISO).split("-").map(Number);
+  return mA === mB ? `del ${dA} al ${dB} de ${MESES_CORTOS[mB - 1]}` : `del ${fechaCorta(desdeISO)} al ${fechaCorta(hastaISO)}`;
+}
 function semanaCorta(lunesISO: string): string {
-  const domingo = masDias(lunesISO, 6);
-  const [, mL, dL] = lunesISO.split("-").map(Number);
-  const [, mD, dD] = domingo.split("-").map(Number);
-  return mL === mD ? `del ${dL} al ${dD} de ${MESES_CORTOS[mD - 1]}` : `del ${fechaCorta(lunesISO)} al ${fechaCorta(domingo)}`;
+  return rangoCorto(lunesISO, masDias(lunesISO, 6));
+}
+const DIAS_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const plata = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
+/** Cómo se llama el período de cada contrato, con su artículo: «la semana», «la quincena», «el mes». */
+const PERIODO: Record<string, { el: string; nombre: string }> = {
+  Semanal: { el: "la", nombre: "semana" }, Quincenal: { el: "la", nombre: "quincena" }, Mensual: { el: "el", nombre: "mes" },
+};
+const periodoDe = (c: ContratoCiclo) => PERIODO[c.forma_pago ?? ""] ?? PERIODO.Semanal;
+
+/**
+ * POR QUÉ UNA SEMANA SALIÓ ATRASADA, en palabras (11-nov-2026, D-084). Pedido del dueño después de ver a
+ * CARLOS ARIZA con motos «atrasadas» de clientes que pagaron a tiempo: todas tenían su razón (la cuota
+ * del acuerdo llegó la semana siguiente, o era una semana vieja), pero el renglón solo decía «Semana
+ * atrasada · 17 oct» y nadie podía saber cuál.
+ */
+function porQueAtrasada(c: ContratoCiclo, exigencia: string, fCaja: string, paq: string): string {
+  const fin = masDias(proximoDiaPago(c, new Date(exigencia + "T12:00:00")).toISOString().slice(0, 10), -1);
+  const nombre = periodoDe(c).nombre;
+  const cual = `${nombre[0].toUpperCase()}${nombre.slice(1)} ${rangoCorto(exigencia, fin)}`;
+  if (lunesDe(fCaja) <= lunesDe(exigencia)) return `${cual}: la pagó el ${fechaCorta(fCaja)}, pero la cuota del acuerdo llegó el ${fechaCorta(paq)}.`;
+  if (paq > fCaja) return `${cual}: la pagó el ${fechaCorta(fCaja)} y la cuota del acuerdo el ${fechaCorta(paq)}, cuando ya corría otra semana.`;
+  return `${cual}: la pagó el ${fechaCorta(fCaja)}, cuando ya corría otra semana.`;
+}
+
+/**
+ * CUÁNTO ABONÓ EL QUE NO COMPLETÓ (11-nov-2026, D-084). Antes salía «No pagó su semana» aunque el cliente
+ * hubiera abonado $200.000 de $202.000 (DQL74I). Ahora dice cuánto abonó y, cuando se puede saber con
+ * exactitud, cuánto le faltó:
+ *   «Abonó $200.000 de $202.000: le faltaron $2.000. Los completó el 19 de oct.»
+ *
+ * Lo que le faltó sale de caminar hacia atrás desde lo que el contrato tiene HOY (semanas pagadas y lo
+ * que lleva la semana en curso), quitando la plata que el cliente pagó después del domingo — la misma
+ * cuenta de `estadoAlCierre` en Reportes. Esa cuenta no siempre es exacta (un acuerdo que financió
+ * semanas, una tarifa que cambió), así que se COMPRUEBA: si la semana se completó después, la plata que
+ * entró después del domingo, en el orden de los días en que pagó, tiene que completarla justo con el pago
+ * que la anotación del vigía dice que la llenó. Si algo no cuadra, solo se dice cuánto abonó: nunca se
+ * inventa lo que le faltó (lo prometido al dueño el 11-nov).
+ */
+function abonoSinCompletar(
+  c: ContratoNomina,
+  pagosC: PagoNomina[],
+  eventosC: EventoCaja[] | null,
+  desde: string,
+  hasta: string,
+  debiaAlFinal: number | null,
+  fechaDeCaja: (ev: EventoCaja) => string,
+): string | undefined {
+  const confirmados = pagosC.filter(p => p.estado === "Confirmado");
+  const deLaSemana = confirmados.filter(p => dia(p.fecha) >= desde && dia(p.fecha) <= hasta
+    && p.tipo_registro !== "adelanto_base" && p.tipo_registro !== "saldo_favor");
+  const abono = deLaSemana.reduce((s, p) => s + (p.valor ?? 0), 0);
+  if (abono <= 0) return undefined;
+  const per = periodoDe(c);
+  const suma = (k: keyof PagoNomina) => deLaSemana.reduce((s, p) => s + Number(p[k] ?? 0), 0);
+  const aCajas = suma("aplicado_tarifa");
+  // A dónde se fue lo que no entró a su semana.
+  const otros = ([["aplicado_deuda", "a deudas"], ["aplicado_convenio", "al acuerdo"], ["aplicado_saldo_favor", "a saldo a favor"], ["aplicado_prorrateo", "a su primer pago"]] as const)
+    .map(([k, txt]) => ({ monto: suma(k), txt })).filter(x => x.monto > 0);
+  const repartido = otros.length === 0 || aCajas + otros.reduce((s, x) => s + x.monto, 0) !== abono ? ""
+    : aCajas > 0 ? `: ${plata(aCajas)} a su ${per.nombre} y ${otros.map(x => `${plata(x.monto)} ${x.txt}`).join(" y ")}`
+    : `: todo ${otros.map(x => x.txt).join(" y ")}`;
+  const soloAbono = `Abonó ${plata(abono)} esta semana${repartido || ", pero no completó lo que le tocaba"}.`;
+
+  const valor = valorPeriodoReal(c);
+  if (!eventosC || !c.motor_v2 || valor <= 0 || debiaAlFinal == null) return soloAbono;
+  // Con un acuerdo que marcó semanas desde que empezó la semana, la cuenta hacia atrás no es exacta.
+  if (eventosC.some(e => e.fuente === "convenio" && e.fecha >= desde)) return soloAbono;
+  if (otros.some(x => x.txt === "a su primer pago")) return soloAbono;
+  const pagadas = c.cajas_pagadas ?? 0;
+  const previas = c.cajas_previas ?? 0;
+  const marcadas = new Set(eventosC.filter(e => e.fuente === "convenio").map(e => e.caja_numero));
+  /** En qué semana estaba la plata al terminar ese día, y cuánto llevaba. null = no se sabe con exactitud. */
+  const alTerminar = (d: string): { caja: number; lleva: number } | null => {
+    let atras = confirmados.filter(p => dia(p.fecha) > d).reduce((s, p) => s + (p.aplicado_tarifa ?? 0), 0);
+    let caja = pagadas + 1;
+    let lleva = c.caja_actual_pagado ?? 0;
+    while (atras > lleva) {
+      atras -= lleva;
+      caja -= 1;
+      if (caja <= previas || marcadas.has(caja)) return null;
+      lleva = valor;
+    }
+    return { caja, lleva: lleva - atras };
+  };
+  const fin = alTerminar(hasta);
+  const ini = alTerminar(masDias(desde, -1));
+  if (!fin || !ini || fin.caja !== ini.caja || fin.lleva < 0 || fin.lleva >= valor) return soloAbono;
+  const falta = valor - fin.lleva;
+  let completo: string | null = null;
+  if (fin.caja <= pagadas) {
+    const ev = eventosC.find(e => e.caja_numero === fin.caja);
+    if (!ev || ev.fuente !== "pago") return soloAbono;
+    const despues = confirmados
+      .filter(p => dia(p.fecha) > hasta && (p.aplicado_tarifa ?? 0) > 0)
+      .sort((a, b) => dia(a.fecha).localeCompare(dia(b.fecha)) || a.created_at.localeCompare(b.created_at));
+    let acum = 0;
+    for (const p of despues) {
+      acum += p.aplicado_tarifa ?? 0;
+      if (acum >= falta) { completo = dia(p.fecha); break; }
+    }
+    if (!completo || completo !== fechaDeCaja(ev)) return soloAbono;
+  }
+  const cuandoCompleto = completo ? ` Los completó el ${fechaCorta(completo)}.` : "";
+  const vieja = fin.caja < debiaAlFinal;
+  if (!vieja && ini.lleva === 0 && aCajas === abono)
+    return `Abonó ${plata(abono)} de ${plata(valor)}: le faltaron ${plata(falta)}.${cuandoCompleto}`;
+  const aCual = vieja ? `${per.el === "el" ? "Al" : "A la"} ${per.nombre} que debía de antes` : `A su ${per.nombre}`;
+  const conLoQueTenia = ini.lleva > 0 ? `, con los ${plata(ini.lleva)} que ya tenía,` : "";
+  return `Abonó ${plata(abono)} esta semana${repartido}. ${aCual}${conLoQueTenia} le faltaron ${plata(falta)}.${cuandoCompleto}`;
 }
 
 /**
@@ -493,18 +616,27 @@ function semanaCorta(lunesISO: string): string {
  * los anteriores de la última semana llena, y así hacia atrás. Las semanas que cubrió un acuerdo solo
  * cuentan la parte que sí fue plata (lo que dice su partitura). Sin desorden devuelve null y la
  * nómina sigue como siempre.
+ *
+ * 🔴 11-nov-2026 (D-084, «siempre el orden del día en que pagó»): hasta aquí solo se miraba el desorden
+ * que dejaba plata en saldo a favor. Si los dos pagos al revés iban a semanas (el del 10 llenó la semana
+ * del 2 y el del 4 la del 9), ninguno caía a saldo y la nómina veía una a tiempo y otra atrasada cuando
+ * el cliente pagó las dos a tiempo. Con `cualquierDesorden` cuenta todo pago a semanas anotado después
+ * de uno más nuevo. Se pide solo desde la semana del 26-oct (INICIO_CORTES_NOMINA): las de antes ya se
+ * pagaron por fuera y se quedan con la cuenta que tenían.
  */
 export function semanasEnOrdenDePago(
   c: ContratoNomina,
   pagosC: PagoNomina[],
   eventosC: EventoCaja[],
   partituras: Array<NonNullable<ConvenioNomina["partitura"]>>,
+  cualquierDesorden = false,
 ): Map<number, string> | null {
   const confirmados = pagosC.filter(p => p.estado === "Confirmado" && !!p.id);
   const reales = confirmados.filter(p => p.tipo_registro !== "saldo_favor");
-  // Desorden = un pago que cayó a saldo a favor cuando ANTES se había anotado uno más nuevo que sí llenó semana.
+  // Desorden = un pago que cayó a saldo a favor (o, con `cualquierDesorden`, que fue a semanas) cuando
+  // ANTES se había anotado uno más nuevo que sí llenó semana.
   const huboDesorden = reales.some(p =>
-    (p.aplicado_saldo_favor ?? 0) > 0
+    ((p.aplicado_saldo_favor ?? 0) > 0 || (cualquierDesorden && (p.aplicado_tarifa ?? 0) > 0))
     && reales.some(q => q.created_at < p.created_at && dia(q.fecha) > dia(p.fecha) && (q.aplicado_tarifa ?? 0) > 0));
   if (!huboDesorden) return null;
 
@@ -667,6 +799,9 @@ export function nominaSemanaDetallada(opts: {
   /** Contratos que SÍ pagaron dentro de esta semana pero se les paga en otra (D-060): el día en que
    *  pagó, en qué día quedó el renglón y por qué. Solo alimenta la etiqueta de lo NO pagado. */
   const pagoCorrido = new Map<string, { pago: string; seCuenta: string; confirmado: string; paquete: string }>();
+  /** El día en que el cliente terminó de pagar cada semana, de los contratos con pagos en desorden
+   *  (D-059). Lo usa también la cuenta de lo que abonó el que no completó, para comprobarse. */
+  const enOrdenPorContrato = new Map<string, Map<number, string> | null>();
   // LAS RETENCIONES DE CADA MOTO, con el día de Colombia (D-060). De aquí salen tres cosas: el renglón
   // de $17.500 (2), qué semana cubre cada retención (2c) y desde cuándo está retenido un contrato (1b).
   const retencionesDeMoto = new Map<string, string[]>();
@@ -776,7 +911,9 @@ export function nominaSemanaDetallada(opts: {
 
     // ── MODO EXACTO (mig 112): las anotaciones del vigía dicen qué caja se llenó y cuándo ──
     if (eventos) {
-      const enOrden = semanasEnOrdenDePago(c, pagosPorContrato.get(c.id) ?? [], eventosPorContrato.get(c.id) ?? [], partiturasPorContrato.get(c.id) ?? []);
+      const enOrden = semanasEnOrdenDePago(c, pagosPorContrato.get(c.id) ?? [], eventosPorContrato.get(c.id) ?? [], partiturasPorContrato.get(c.id) ?? [],
+        desde >= INICIO_CORTES_NOMINA);
+      enOrdenPorContrato.set(c.id, enOrden);
       for (const ev of eventosPorContrato.get(c.id) ?? []) {
         // Las cajas marcadas por un CONVENIO no se pagan por la anotación: entró papel, no
         // plata. Su plata real llega en las cuotas — que son la pata-convenio de los paquetes
@@ -831,6 +968,7 @@ export function nominaSemanaDetallada(opts: {
           fecha: fRenglon,
           pagadoEl: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
+          ...(atrasada ? { porque: porQueAtrasada(c, exigencia, fEv, paq) } : {}),
           ...deQuien(moto, quien),
         });
       }
@@ -893,6 +1031,7 @@ export function nominaSemanaDetallada(opts: {
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
           fecha: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
+          ...(atrasada ? { porque: porQueAtrasada(c, exigencia, dia(p.fecha), paq) } : {}),
           ...deQuien(moto, quienEl(moto, paq)),
         });
       }
@@ -946,8 +1085,16 @@ export function nominaSemanaDetallada(opts: {
 
   // ── 2b) VISITAS: $30.000 a QUIEN LA HIZO, en la semana en que se entregó la moto ──────────
   // Ver VALOR_VISITA. Una visita se paga UNA sola vez: la primera entrega posterior a ella.
+  // 🔴 Y UNA ENTREGA paga UNA sola visita (11-nov-2026, D-084, regla del dueño: «eso cuenta como una sola
+  // visita siempre lo de repetir visitas»). Volver a hacer la visita (una quedó en «Repetir», o se guardó
+  // otra vez) no es otra visita: a la NHT77I se le hizo 4 veces en 15 minutos y se pagaron $160.000. Se
+  // paga la última que se hizo antes de entregar —la que quedó buena—, en todas las semanas. Lo que ya se
+  // pagó de más no se descuenta (dueño, 11-nov: «ya dejémoslo así»).
   const visitaPagada = new Set<string>();
-  for (const v of visitas) {
+  const entregaConVisita = new Set<string>();
+  const ultimaPrimero = [...visitas].sort((a, b) =>
+    dia(b.fecha).localeCompare(dia(a.fecha)) || (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  for (const v of ultimaPrimero) {
     if (v.estado === "Rechazada" || !v.realizada_por) continue;
     if (visitaPagada.has(v.id)) continue;
     // El contrato que nació de esta visita: la primera entrega del cliente posterior a ella.
@@ -956,6 +1103,7 @@ export function nominaSemanaDetallada(opts: {
                    && x.estado !== "Cancelado")
       .sort((a, b) => dia(a.fecha_entrega!).localeCompare(dia(b.fecha_entrega!)))[0];
     if (!c || !c.moto_id) continue;
+    if (entregaConVisita.has(c.id)) continue;
     const entrega = dia(c.fecha_entrega!);
     if (entrega < desde || entrega > hasta) continue;
     // "Se paga por dejar el dato CIERTO": si la validación dice que la moto NO duerme ahí, no vale.
@@ -963,6 +1111,7 @@ export function nominaSemanaDetallada(opts: {
     const moto = motoDe.get(c.moto_id);
     if (!moto) continue;
     visitaPagada.add(v.id);
+    entregaConVisita.add(c.id);
     renglones.push({
       motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—",
       cliente: clientesPorId.get(c.cliente_id) ?? "—",
@@ -1033,7 +1182,15 @@ export function nominaSemanaDetallada(opts: {
   // Se recorre por MOTO (no por renglón): es la única forma de ver lo que falta. Las motos sin
   // cobrador no entran — no son plata de nadie y ya se muestran aparte. Cada moto sale en la lista
   // de quien la tenía al EMPEZAR la semana (D-061; el día del cambio cuenta para el que la recibe).
-  const conRenglon = new Set(renglonesFinales.map(r => r.motoId));
+  // 🔴 11-nov-2026 (D-084): solo cuentan los renglones de COBRO y los que son de este mismo supervisor. La
+  // visita o el referido de OTRA persona no son gestión suya: antes bastaban para sacar la moto de su
+  // lista, y en el papel una moto recién entregada no salía en ninguna parte (IGC44I de CARLOS ARIZA,
+  // con la visita y el referido de otra persona: 23 casos en cuatro semanas).
+  const renglonesDeMoto = new Map<string, GestionNomina[]>();
+  for (const r of renglonesFinales) {
+    if (!renglonesDeMoto.has(r.motoId)) renglonesDeMoto.set(r.motoId, []);
+    renglonesDeMoto.get(r.motoId)!.push(r);
+  }
   const sinGestion: MotoSinGestion[] = [];
   for (const m of motos) {
     const quien = quienEl(m, desde);
@@ -1041,7 +1198,7 @@ export function nominaSemanaDetallada(opts: {
     // Si pasó a otro supervisor en la semana y todo lo que se cobró de ella quedó para el nuevo, a
     // quien la tenía al empezar no le generó nada: sale en su lista, con el porqué.
     let paso: string | null = null;
-    if (conRenglon.has(m.id)) {
+    if ((renglonesDeMoto.get(m.id) ?? []).some(r => TIPOS_COBRO.has(r.tipo) || cobradorDe(r) === quien)) {
       paso = libro?.cambioEntre(m.id, desde, hasta) ?? null;
       if (!paso) continue;
       const cobros = renglonesFinales.filter(r => r.motoId === m.id && TIPOS_COBRO.has(r.tipo));
@@ -1072,12 +1229,20 @@ export function nominaSemanaDetallada(opts: {
     else if (frenadoPorConvenio.has(c.id)) motivo = "falta_convenio";
     else if (c.estado === "Activo" || c.estado === "Suspendido") {
       motivo = "no_pago";
+      let debiaAlFinal: number | null = null;
+      // RECIÉN ENTREGADA (D-084): se entregó y su primer cobro todavía no llegaba. Se dice con fechas.
+      if (!c.es_migrado && c.fecha_entrega && c.fecha_inicio_cajas
+          && dia(c.fecha_entrega) <= hasta && dia(c.fecha_inicio_cajas) > hasta) {
+        motivo = "no_tocaba";
+        const primero = dia(c.fecha_inicio_cajas);
+        detalle = `Recién entregada el ${fechaCorta(c.fecha_entrega)}: su primer cobro es el ${DIAS_SEMANA[new Date(primero + "T12:00:00").getDay()]} ${fechaCorta(primero)}`;
+      }
       // ¿Se le cobraba algo esta semana? Con el mismo contador de Cartera (`cajasExigidasHasta`).
-      if (eventos && c.motor_v2 && c.fecha_inicio_cajas) {
+      else if (eventos && c.motor_v2 && c.fecha_inicio_cajas) {
         const evC = eventosPorContrato.get(c.id) ?? [];
         const exigidasAl = (d: string) => cajasExigidasHasta(c, new Date(d + "T12:00:00"));
         const debiaAntes = exigidasAl(masDias(desde, -1));
-        const debiaAlFinal = exigidasAl(hasta);
+        debiaAlFinal = exigidasAl(hasta);
         const pagadas = c.cajas_pagadas ?? 0;
         const llenasAntes = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha >= desde).length;
         const llenasAlFinal = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha > hasta).length;
@@ -1094,6 +1259,12 @@ export function nominaSemanaDetallada(opts: {
           motivo = "no_tocaba";
           if (c.forma_pago !== "Semanal") detalle = `${c.forma_pago}: esta semana no le tocaba pagar`;
         }
+      }
+      // Cuánto abonó, si abonó algo (D-084). Si no abonó nada, sigue diciendo «No pagó su semana».
+      if (motivo === "no_pago") {
+        const enOrden = enOrdenPorContrato.get(c.id);
+        detalle = abonoSinCompletar(c, pagosPorContrato.get(c.id) ?? [], eventos ? (eventosPorContrato.get(c.id) ?? []) : null,
+          desde, hasta, debiaAlFinal, ev => (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev));
       }
     }
     else motivo = "sin_contrato";

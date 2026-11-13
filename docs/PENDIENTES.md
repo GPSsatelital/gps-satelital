@@ -19,7 +19,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   `2026-11-13 Respuesta al reporte de placas`. Responden placa por placa lo que cada uno reportó (estaba bien y por
 >   qué, o qué se corrigió), como pidió el dueño; la primera versión, de explicación general, se descartó. Lumar no
 >   reportó: no lleva PDF (su RMZ69H sube $3.750). El generador, `docs/informes-nomina/hacer-respuestas-13nov.py`
->   de la copia aparte (carpeta ignorada por git), hay que pasarlo a la principal.
+>   (usa los dibujos de `hacer-informes-13nov.py`), ya está en la carpeta principal; esa carpeta la ignora git.
 > - [ ] 💻 **Todo lo que se deje en el Escritorio va en `Club Moteros - Documentos`**, por tema y con fecha (pedido del
 >   dueño, 13-nov). Ya se ordenó lo que había. Faltan los programas de la copia principal que todavía guardan en el
 >   Escritorio suelto: `docs/avisos-zala/hacer-avisos.py` (`Desktop\Avisos ZALA`) y

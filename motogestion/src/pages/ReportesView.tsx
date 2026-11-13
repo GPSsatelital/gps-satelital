@@ -484,6 +484,9 @@ export default function ReportesView({ onNavigate }: Props) {
     const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
     return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
   }, [registrosRodadas, contratos]);
+  // El día de cada «Rodar todo» (D-087): desde ese día la nómina deja de pedir la cuota de ESE acuerdo.
+  const rodadoTodoEl = useMemo(() => new Map((registrosRodadas?.rodadosTodo ?? [])
+    .filter(r => r.convenio_id).map(r => [r.convenio_id!, r.fecha.slice(0, 10)])), [registrosRodadas]);
   // El libro de asignaciones (mig 211, D-061): cada pago es de quien tenía la moto el día en que pagó
   // el cliente, no del supervisor de hoy. El día del cambio cuenta para el que la recibe.
   const { tramos: tramosAsignacion, cargando: cargandoLibro, error: errorLibro } = useAsignacionesMotos(tab === "nomina" || pdfPideNomina, intentoNomina);
@@ -530,7 +533,8 @@ export default function ReportesView({ onNavigate }: Props) {
       motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null, grupo: m.grupo ?? null })),
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
-      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, cubre_periodo_hasta: cv.cubre_periodo_hasta, fecha_primera_cuota: cv.fecha_primera_cuota, deuda_total: cv.deuda_total, partitura: cv.partitura, created_at: cv.created_at })),
+      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, cubre_periodo_hasta: cv.cubre_periodo_hasta, fecha_primera_cuota: cv.fecha_primera_cuota, deuda_total: cv.deuda_total, partitura: cv.partitura, created_at: cv.created_at,
+        rodado_el: cv.estado === "rodado" ? (rodadoTodoEl.get(cv.id) ?? null) : null })),
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado, created_at: v.created_at })),
       // Quién trajo a cada cliente (mig 153): $30.000 a esa persona en la semana de la entrega.
       referidos: clientes
@@ -539,7 +543,7 @@ export default function ReportesView({ onNavigate }: Props) {
       rodadas: rodadasNomina,
       semanaCerrada: semanaCerradaNomina,
       asignaciones: tramosAsignacion,
-  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, semanaCerradaNomina, tramosAsignacion]);
+  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, rodadoTodoEl, semanaCerradaNomina, tramosAsignacion]);
   const nominaDetalle = useMemo(() => {
     if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [] };
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });

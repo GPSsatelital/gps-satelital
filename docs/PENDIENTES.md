@@ -8,7 +8,18 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **10-nov-2026**.
+- Última revisión: **13-nov-2026**.
+
+> 🔨 **(13-nov) Nómina: la plata del cliente por el día en que la pagó, el acuerdo rodado y los textos (D-087).**
+> Hecho y medido en la copia aparte `claude/heuristic-dewdney-ce820a`; **sin publicar**. Tres archivos:
+> `nominaCobradores.ts` y su prueba, `useRodadas.ts` y `ReportesView.tsx`. Sin migración. Nadie pierde: Brandon
+> +$33.750, Ariza +$7.500, Alvarez +$3.750, Lumar +$3.750 (semanas del 26-oct al 9-nov).
+> - [ ] 🧑 **Publicarlo ANTES de cerrar la semana del 2-nov** (ya está en corte): si se cierra antes, se cierra con la cuenta vieja.
+> - [ ] 🧑 **Entregar los PDF** (escritorio: «Nomina explicada … 26 oct y 2 nov», uno por supervisor; el de Lumar es
+>   aparte, no estaba en la revisión) **después de publicar**: dicen lo que la app va a mostrar. El generador está en
+>   `docs/informes-nomina/hacer-informes-13nov.py` de la copia aparte (carpeta ignorada por git): pasarlo a la principal.
+> - [ ] 💻 Los otros dos acuerdos con «Rodar todo» (RML54H del 9-nov y YAL68H del 5-nov) no movieron plata en estas
+>   semanas: mirarlos en la nómina de la semana del 9-nov.
 
 > ✅ **(11-nov) La nómina explica cada renglón (D-084): PUBLICADA el 11-nov, después de las 6 p. m.** Cinco archivos:
 > `nominaCobradores.ts` y su prueba, `generarDesprendibleNomina.ts` y su prueba, y `ReportesView.tsx`. Sin migración.
@@ -20,8 +31,9 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - [ ] 💻 **RML54H tiene `fecha_fin_cobro` = 9-sep-2025** (un año antes de que existiera la app). Parece mal escrita.
 > - [ ] 🧑 **Cómo se pagaron las semanas de antes del 26-oct** (por fuera de la app): no se sabe. Las visitas repetidas
 >   de esas semanas ($280.000) no se descuentan, por decisión del dueño.
-> - [ ] 💻 **3 abonos que no cuadran con lo que anotó el motor** (IEW87I, XZI01H, IGC49I): la nómina solo dice
->   «Abonó $X esta semana». Ver por qué la cuenta hacia atrás no da.
+> - [x] 💻 **3 abonos que no cuadran con lo que anotó el motor** (IEW87I, XZI01H, IGC49I): la nómina solo dice
+>   «Abonó $X esta semana». ✅ (13-nov, D-087) Eran tres casos distintos: a IEW87I la semana la cubrió un acuerdo (ahora
+>   lo dice), y XZI01H e IGC49I sí completaron a tiempo con plata anotada tarde o guardada (ahora salen a tiempo).
 
 > 🔴 **AL ARRANCAR (7-nov) — EN EL OTRO PC.** El dueño dijo que no se vuelve a trabajar en el PC de la oficina. La
 > mudanza está en `P:\MUDANZA-2026-11-07`: puesta al día y comprobada el 10-nov, con los stickers de la XTZ 250 y el

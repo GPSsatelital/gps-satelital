@@ -1310,3 +1310,45 @@ RML55H, NGY94I). Nadie más se mueve. Ninguna semana estaba cerrada (`nomina_cie
 **Dónde vive:** `nominaCobradores.ts` (`porQueAtrasada`, `abonoSinCompletar`, el reverso, las visitas y
 `semanasEnOrdenDePago` con `cualquierDesorden`), `generarDesprendibleNomina.ts` y `ReportesView.tsx`. Sin migración. 29
 pruebas nuevas. ZALA no lee la nómina (`docs/DICCIONARIO-ESTADOS.md` → C28).
+
+### D-087 · 13-nov-2026 · Nómina: la plata del cliente cuenta desde el día en que la pagó, el acuerdo rodado entero ya no pide cuota y los textos dicen lo que pasó
+**Decidió:** el dueño, al revisar las placas que marcó en la nómina de CARLOS ARIZA (semana del 2-nov), BRANDON ROJAS
+(26-oct y 2-nov) y CARLOS ALVAREZ (2-nov): «Por el día que pagó (Recomendado)» · sobre el cliente cuyo día de pago no
+es lunes: «el hecho de que paguen atrasado no quiere decir que esos son los dias en los que deban pagar y para eso estan
+los supervisores» (no se cambia) · «arregla todo para que ya quede bien» y un PDF por supervisor.
+**Qué encontró la revisión:** de 17 placas, 13 estaban bien según la regla. Lo que no:
+- **«Rodar todo» (mig 201):** la nómina le seguía pidiendo la cuota a un acuerdo en estado `rodado` (RMM66H, y desde el
+  6-nov RML44H y RML49H). El cliente solo paga su semana y la semana salía «falta la cuota del acuerdo».
+- **Plata guardada (saldo a favor):** la semana que completa contaba el día en que la oficina la aplicó, no el día en que
+  el cliente la pagó (IGC40I: $10.000 del 14-oct aplicados el 9-nov; IGC49I; RMZ69H de Lumar).
+- **Pago anotado después de otros más nuevos:** el motor lo mandó a saldo a favor o a deudas y la semana contaba el día
+  de los otros (RNN72H: transferencia del 27-oct anotada el 11-nov; XZI01H: la del 31-oct anotada el 6-nov, después de
+  un pago del 5-nov, $149.000 a deudas; XZN81H: la del 27-oct anotada el 11-nov). Las tres tienen comprobante y
+  referencia del banco única.
+- **Textos del reverso:** RML41H decía «No pagó su semana» con la semana pagada por adelantado (el chequeo usaba el día
+  de anotación, no el de los renglones); IEW87I no decía que su semana la cubrió un acuerdo; MLQ75H decía «le faltaron
+  $2.000» sin la cuota del acuerdo que también le faltaba.
+**Qué se decidió:**
+1. Desde la semana del 26-oct, cada semana pagada cuenta con el día en que el cliente terminó de pagarla con SU plata.
+   Lo que un pago anotado tarde dejó en saldo a favor cuenta desde el día de ese pago. Lo que mandó a deudas (sin
+   multa ni lavada) cuenta solo hasta lo que metieron a semanas los pagos más nuevos anotados antes que él, y solo
+   mientras alguno de esos pagos siga por delante. La fecha solo se adelanta, y solo si ese día la semana ya se
+   cobraba. **El motor no se toca:** lo repartido queda como está.
+2. Desde el día del «Rodar todo» (`rodados_por_deuda` con `todo = true` y no anulado) la nómina no pide la cuota de
+   ese acuerdo.
+3. Motivo nuevo del reverso, `acuerdo_cubrio`: «Su semana la cubrió un acuerdo: es papel, no plata», con el texto según
+   cuánto le financió el acuerdo a esa semana (entera, una parte o sin partitura). «Adelantada» y «no le tocaba» usan
+   el mismo día que los renglones. «No pagó» agrega «Del acuerdo le tocaban $X y no abonó nada / y abonó $Y: le
+   faltaron $Z».
+4. **No cambia:** la semana va de lunes a domingo; quien paga después del domingo sale atrasado aunque su día sea
+   miércoles o viernes (IGJ76I). Semana y cuota siguen siendo un solo pago (D-022).
+**Efecto (medido con el código nuevo contra el de hoy, semanas del 26-oct, 2-nov y 9-nov, y cuadrado con la pantalla
+de Nómina):** nadie pierde. Brandon +$33.750 (XZN81H, IGC40I, IGC49I, RMM66H, RML44H, RML49H), Ariza +$7.500
+(RNN72H), Alvarez +$3.750 (XZI01H), Lumar +$3.750 (RMZ69H). Por semana: 26-oct +$7.500 a cada uno de los cuatro;
+2-nov Brandon +$18.750, Ariza +$3.750, Alvarez −$3.750 y Lumar −$3.750 (su renglón se corre a la semana anterior y
+pasa de $3.750 a $7.500); 9-nov (va corriendo) Brandon +$7.500, Ariza −$3.750. DPU56I y RLZ81H cambian de día sin
+cambiar plata. Ninguna semana estaba cerrada (`nomina_cierres` vacía).
+**Dónde vive:** `nominaCobradores.ts` (`semanasConPlataDelCliente`, `cuotasQuePide` con `rodado_el`,
+`faltaDelAcuerdo`, el motivo `acuerdo_cubrio`), `useRodadas.ts` (lee `rodados_por_deuda`) y `ReportesView.tsx`. Sin
+migración. 19 pruebas nuevas y 1 cambiada a propósito (IEW66I: ahora dice que la cerró el acuerdo). ZALA no lee la nómina
+(`docs/DICCIONARIO-ESTADOS.md` → C28). Explicado a cada supervisor en un PDF que no va al repo (lleva clientes).

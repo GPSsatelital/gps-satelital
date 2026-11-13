@@ -580,3 +580,25 @@ consola en ese momento.
 **Qué lo evita ahora:** cuando un arreglo trae fecha de arranque, preguntar por cada parte si es un error de siempre o
 una regla desde un día. Los archivos de trabajo se escriben siempre con la ruta completa de la carpeta temporal de la
 sesión, nunca con una ruta relativa.
+
+### Otra vez en inglés, con el ajuste ya puesto (13-nov, séptima vez)
+**Lo que pasó:** en la revisión de las placas de la nómina, el razonamiento que se ve en pantalla y algunos avisos
+cortos salieron en inglés. El dueño: *«porque me hablas en ingles?»*. El ajuste `"language": "spanish"` del 3-nov
+seguía puesto.
+**Por qué:** era una sesión larga, con medidas de la flota y salidas de comandos; el ajuste manda en las respuestas,
+pero el razonamiento se me fue al idioma de los avisos del sistema y de las salidas.
+**Quién lo cazó:** el dueño.
+**Qué lo evita ahora:** pensar en español desde la primera línea también en las tareas largas, y mirar cada aviso antes
+de mandarlo. Si vuelve a pasar, queda el refuerzo que se propuso el 3-nov: un recordatorio pegado a cada mensaje del
+dueño (hook `UserPromptSubmit`), que se pone solo con su sí.
+
+### Dos maneras de contar la plata anotada tarde que movían a otros clientes (13-nov)
+**Lo que pasó:** para que la nómina contara la plata del cliente por el día en que la pagó (D-087), probé primero que
+lo «devuelto» (lo que no fue a semanas) contara para siempre: le corría a octubre un pago de agosto a la IEW64I. Después
+probé contar solo lo que metieron los pagos anotados tarde: dejaba atrasada la semana del 2-nov de la RNN72H, que sí se
+había pagado a tiempo con su saldo a favor.
+**Por qué:** cambié la regla mirando las placas de la revisión, y cada manera arreglaba unas y movía otras que nadie
+había preguntado.
+**Quién lo cazó:** yo, midiendo toda la flota antes y después de cada manera, no solo las placas de la revisión.
+**Qué lo evita ahora:** con la nómina, como con la cartera, cada cambio se mide en toda la flota y se mira placa por
+placa todo lo que se mueve, también lo que no estaba en la lista. Las dos trampas quedaron como pruebas automáticas.

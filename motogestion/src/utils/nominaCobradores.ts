@@ -140,6 +140,9 @@ export type ConvenioNomina = {
   /** Qué financió el acuerdo de cada semana (mig 116). Con eso se sabe cuánto de esa semana sí
    *  fue plata — lo necesitan los pagos anotados en desorden (ver `semanasEnOrdenDePago`). */
   partitura?: Array<{ tipo: string; ref?: string | number | null; monto: number }> | null;
+  /** El día en que se hizo «Rodar todo» (mig 201): el acuerdo quedó en 'rodado' y desde ese día el
+   *  cliente solo paga su semana normal (D-087). null = el acuerdo sigue vivo. */
+  rodado_el?: string | null;
   created_at: string;
 };
 
@@ -223,6 +226,8 @@ export type NominaCobrador = {
  *                         semana; desde ahí solo paga si el cliente sigue abonando el convenio ($3.750).
  *   falta_convenio ...... la caja SÍ se llenó esta semana, pero falta la cuota del convenio. Es la
  *                         regla del paquete, no un descuido: el cliente pagó a medias.
+ *   acuerdo_cubrio ...... la semana que se cobraba esta semana la marcó un acuerdo (D-087, IEW87I): entró
+ *                         papel, no plata. No da pago, pero el cliente no quedó debiéndola.
  *   adelantada .......... la semana que se cobraba esta semana ya estaba pagada desde antes (D-060).
  *   no_tocaba ........... esta semana no se le cobraba nada (quincenal o mensual) y no debía nada (D-060),
  *                         o la moto se acaba de entregar y su primer cobro es después (D-084).
@@ -237,7 +242,7 @@ export type NominaCobrador = {
  * (se confirmó el lunes 19 y se les pagaba en la semana del 19). El dueño las vio y creyó que faltaban.
  */
 export type MotivoSinGestion = "sin_contrato" | "diario" | "pago_otra_semana" | "retenida_sin_abono" | "falta_convenio"
-  | "adelantada" | "no_tocaba" | "no_pago" | "cambio_supervisor";
+  | "acuerdo_cubrio" | "adelantada" | "no_tocaba" | "no_pago" | "cambio_supervisor";
 
 export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   sin_contrato: "Sin cliente (no hay nada que cobrar)",
@@ -245,6 +250,7 @@ export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   pago_otra_semana: "Pagó esta semana, pero se le paga en otra",
   retenida_sin_abono: "Retenida — no abonó el convenio esta semana",
   falta_convenio: "Pagó la semana, le falta la cuota del convenio",
+  acuerdo_cubrio: "Su semana la cubrió un acuerdo: es papel, no plata",
   adelantada: "Esta semana ya la tenía pagada por adelantado",
   no_tocaba: "Esta semana no le tocaba pagar",
   no_pago: "No pagó su semana",
@@ -301,6 +307,10 @@ export type PagoNomina = {
   aplicado_saldo_favor?: number | null;
   /** Solo para decir a dónde se fue lo que abonó el que no completó su semana (D-084). */
   aplicado_deuda?: number | null;
+  /** Ya vienen DENTRO de `aplicado_deuda`. La plata de un pago anotado tarde que fue a deudas cuenta
+   *  para su semana (D-087), pero la multa y la lavada no: con la moto retenida van antes que todo. */
+  aplicado_multa?: number | null;
+  aplicado_lavada?: number | null;
 };
 
 export type MotoNomina = { id: string; placa: string; subadmin_id: string | null; grupo?: string | null };
@@ -530,6 +540,9 @@ function abonoSinCompletar(
   hasta: string,
   debiaAlFinal: number | null,
   fechaDeCaja: (ev: EventoCaja) => string,
+  /** La semana de esta semana la cubrió un acuerdo (D-087): no se dice que «no completó»; y si la cubrió
+   *  ENTERA, lo que entró a semanas fue a OTRAS semanas. */
+  cubierta: "entera" | "parte" | null = null,
 ): string | undefined {
   const confirmados = pagosC.filter(p => p.estado === "Confirmado");
   const deLaSemana = confirmados.filter(p => dia(p.fecha) >= desde && dia(p.fecha) <= hasta
@@ -542,10 +555,11 @@ function abonoSinCompletar(
   // A dónde se fue lo que no entró a su semana.
   const otros = ([["aplicado_deuda", "a deudas"], ["aplicado_convenio", "al acuerdo"], ["aplicado_saldo_favor", "a saldo a favor"], ["aplicado_prorrateo", "a su primer pago"]] as const)
     .map(([k, txt]) => ({ monto: suma(k), txt })).filter(x => x.monto > 0);
+  const aSemanas = cubierta === "entera" ? "a otras semanas" : `a su ${per.nombre}`;
   const repartido = otros.length === 0 || aCajas + otros.reduce((s, x) => s + x.monto, 0) !== abono ? ""
-    : aCajas > 0 ? `: ${plata(aCajas)} a su ${per.nombre} y ${otros.map(x => `${plata(x.monto)} ${x.txt}`).join(" y ")}`
+    : aCajas > 0 ? `: ${plata(aCajas)} ${aSemanas} y ${otros.map(x => `${plata(x.monto)} ${x.txt}`).join(" y ")}`
     : `: todo ${otros.map(x => x.txt).join(" y ")}`;
-  const soloAbono = `Abonó ${plata(abono)} esta semana${repartido || ", pero no completó lo que le tocaba"}.`;
+  const soloAbono = `Abonó ${plata(abono)} esta semana${repartido || (cubierta ? "" : ", pero no completó lo que le tocaba")}.`;
 
   const valor = valorPeriodoReal(c);
   if (!eventosC || !c.motor_v2 || valor <= 0 || debiaAlFinal == null) return soloAbono;
@@ -596,6 +610,41 @@ function abonoSinCompletar(
 }
 
 /**
+ * CUÁNTO LE FALTÓ DEL ACUERDO la semana en que tampoco completó su semana (13-nov-2026, D-087, MLQ75H). La
+ * semana va con su cuota del acuerdo (D-022) y la cuota se arrastra: si no abonó la de la semana pasada,
+ * esta semana le tocan las dos. null = esa semana no le tocaba cuota, o la tenía paga.
+ */
+function faltaDelAcuerdo(
+  c: ContratoNomina,
+  pagosC: PagoNomina[],
+  info: { cv: ConvenioNomina; fechasCubiertas: string[]; cuotasQuePide: (exigencia: string, fechaCaja: string) => number } | undefined,
+  desde: string,
+  hasta: string,
+): string | null {
+  if (!info) return null;
+  // El día de la semana en que se le cobraba (el lunes, el miércoles o la fecha del mes).
+  let exigencia: string | null = null;
+  for (let d = desde; d <= hasta; d = masDias(d, 1)) {
+    if (cajasExigidasHasta(c, new Date(d + "T12:00:00")) > cajasExigidasHasta(c, new Date(masDias(d, -1) + "T12:00:00"))) { exigencia = d; break; }
+  }
+  if (!exigencia) return null;
+  const req = info.cuotasQuePide(exigencia, hasta);
+  if (req <= 0) return null;
+  const { cv } = info;
+  const conv = pagosC.filter(p => p.estado === "Confirmado" && (p.aplicado_convenio ?? 0) > 0 && p.created_at >= cv.created_at);
+  const pagadoAl = (d: string) => conv.filter(p => dia(p.fecha) <= d).reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+  const antes = pagadoAl(masDias(desde, -1));
+  const tocaba = Math.min(req * cv.cuota_por_periodo, cv.deuda_total || Infinity) - antes;
+  if (tocaba <= 0) return null;
+  const abono = pagadoAl(hasta) - antes;
+  const falta = tocaba - abono;
+  if (falta <= 0) return null;
+  const llego = info.fechasCubiertas[req - 1];
+  return `Del acuerdo le tocaban ${plata(tocaba)}${abono > 0 ? ` y abonó ${plata(abono)}` : " y no abonó nada"}: le faltaron ${plata(falta)}.`
+    + (llego && llego > hasta ? ` Los completó el ${fechaCorta(llego)}.` : "");
+}
+
+/**
  * LOS PAGOS ANOTADOS EN DESORDEN (31-oct-2026, D-059, aprobado por el dueño: «sí, las dos partes»).
  *
  * 🔴 EL CASO: PEDRO FLOREZ (IEW90I) pagó su semana del 12-oct el 14 y el 15, y la del 19-oct el 21 y
@@ -640,6 +689,29 @@ export function semanasEnOrdenDePago(
     && reales.some(q => q.created_at < p.created_at && dia(q.fecha) > dia(p.fecha) && (q.aplicado_tarifa ?? 0) > 0));
   if (!huboDesorden) return null;
 
+  const { aportes } = aportesASemanas(c, confirmados);
+  const plataDe = plataDeCadaSemana(c, eventosC, partituras);
+  if (!plataDe) return null;
+
+  const pagadas = c.cajas_pagadas ?? 0;
+  const out = new Map<number, string>();
+  for (const e of eventosC) {
+    if (e.fuente !== "pago" || e.caja_numero <= 0 || e.caja_numero > pagadas) continue;
+    // Cuánta plata vino DESPUÉS de completar esta semana: lo de la semana en curso y las semanas siguientes.
+    let despues = c.caja_actual_pagado ?? 0;
+    for (let n = e.caja_numero + 1; n <= pagadas; n++) despues += plataDe(n);
+    let acum = 0;
+    for (let j = aportes.length - 1; j >= 0; j--) {
+      acum += aportes[j].m;
+      if (acum > despues) { out.set(e.caja_numero, aportes[j].f); break; }
+    }
+  }
+  return out;
+}
+
+/** La plata que entró a semanas, con el día en que la pagó el cliente. El saldo a favor que se aplicó va
+ *  con el día del pago que lo generó; el del cuaderno (sin pago detrás), con el día en que se aplicó. */
+function aportesASemanas(c: ContratoNomina, confirmados: PagoNomina[]) {
   const rastro = rastroSaldoFavor(c, confirmados.map(p => ({ ...p, id: p.id!, valor: p.valor ?? 0 }) as PagoSaldo));
   const aportes: Array<{ f: string; m: number; orden: string }> = [];
   for (const p of confirmados) {
@@ -656,7 +728,11 @@ export function semanasEnOrdenDePago(
     if (resto > 0) aportes.push({ f: dia(p.fecha), m: resto, orden: p.created_at });
   }
   aportes.sort((a, b) => a.f.localeCompare(b.f) || a.orden.localeCompare(b.orden));
+  return { aportes, rastro };
+}
 
+/** Cuánta PLATA tuvo cada semana: las que cubrió un acuerdo, solo la parte que no financió (su partitura). */
+function plataDeCadaSemana(c: ContratoNomina, eventosC: EventoCaja[], partituras: Array<NonNullable<ConvenioNomina["partitura"]>>) {
   const valor = valorPeriodoReal(c);
   if (valor <= 0) return null;
   const financiado = new Map<number, number>();
@@ -666,20 +742,102 @@ export function semanasEnOrdenDePago(
     financiado.set(n, (financiado.get(n) ?? 0) + Number(pt.monto ?? 0));
   }
   const deConvenio = new Set(eventosC.filter(e => e.fuente === "convenio").map(e => e.caja_numero));
-  const plataDe = (n: number) => deConvenio.has(n) ? Math.max(valor - (financiado.get(n) ?? valor), 0) : valor;
+  return (n: number) => deConvenio.has(n) ? Math.max(valor - (financiado.get(n) ?? valor), 0) : valor;
+}
+
+/**
+ * EL DÍA EN QUE EL CLIENTE TERMINÓ DE PAGAR CADA SEMANA, contando su plata por el día en que la pagó,
+ * aunque se haya anotado tarde (13-nov-2026, D-087, decisión del dueño: «por el día que pagó»).
+ *
+ * 🔴 LOS CASOS:
+ *  · IGC40I: el 14-oct le sobraron $10.000 (saldo a favor) y el 6-nov pagó $192.000. La oficina aplicó el
+ *    saldo el 9-nov: la semana del 2-nov se completó con plata que el cliente ya había pagado el 6, pero
+ *    la nómina la veía el 9 y la daba atrasada.
+ *  · XZI01H: la transferencia del 31-oct se anotó el 6-nov, cuando otros pagos ya habían llenado su
+ *    semana; el motor mandó $149.000 a deudas y la semana del 26-oct se vio incompleta.
+ *  · RNN72H: la transferencia del 27-oct se anotó el 11-nov y fue toda a saldo a favor.
+ *  Anotada a tiempo, esa plata habría llenado su semana. Aquí cuenta como si se hubiera anotado el día
+ *  en que el cliente pagó.
+ *
+ * QUÉ CUENTA: la plata que entró a semanas (con el saldo aplicado en el día del pago que lo generó, como
+ * `semanasEnOrdenDePago`) y, de los pagos ANOTADOS TARDE (después de uno más nuevo que sí llenó semana),
+ * lo que el motor mandó a deudas o lo que sigue guardado en saldo a favor. La multa y la lavada no:
+ * con la moto retenida se cobran antes que todo, anotara cuando anotara.
+ *
+ * CÓMO: lo que hoy está en las semanas es fijo (semanas pagadas y lo que lleva la en curso). Del pago anotado
+ * tarde, lo que sigue guardado cuenta desde el día en que pagó (es plata suya en la casa); lo que pagó deudas
+ * solo cambia de puesto con los pagos que se le colaron, y pasado el último colado todo queda como hoy. Una
+ * semana quedó completa el primer día en que lo que el cliente pagó DESPUÉS ya no alcanzaba para las
+ * semanas siguientes.
+ *
+ * Quien llama la usa SOLO para ADELANTAR la fecha, y solo si ese día la semana ya se cobraba: un pago no
+ * puede llenar una semana que todavía no se cobraba (mig 119). Nunca atrasa a nadie. null = no hay nada
+ * que mirar (ni saldo aplicado ni pagos anotados tarde).
+ */
+export function semanasConPlataDelCliente(
+  c: ContratoNomina,
+  pagosC: PagoNomina[],
+  eventosC: EventoCaja[],
+  partituras: Array<NonNullable<ConvenioNomina["partitura"]>>,
+): Map<number, string> | null {
+  const confirmados = pagosC.filter(p => p.estado === "Confirmado" && !!p.id);
+  const reales = confirmados.filter(p => p.tipo_registro !== "saldo_favor");
+  const anotadosTarde = reales.filter(p =>
+    reales.some(q => q.created_at < p.created_at && dia(q.fecha) > dia(p.fecha) && (q.aplicado_tarifa ?? 0) > 0));
+  const hayAplicado = confirmados.some(p => p.tipo_registro === "saldo_favor" && (p.aplicado_tarifa ?? 0) > 0);
+  if (!hayAplicado && anotadosTarde.length === 0) return null;
+
+  const plataDe = plataDeCadaSemana(c, eventosC, partituras);
+  if (!plataDe) return null;
+  const { aportes, rastro } = aportesASemanas(c, confirmados);
+  // Cada pago anotado tarde: lo que sigue guardado en saldo a favor, lo que se fue a deudas y los pagos
+  // que se le COLARON (de días posteriores, anotados antes que él, que sí llenaron semana).
+  const tardes: Array<{ f: string; guardado: number; aDeudas: number; colados: PagoNomina[] }> = [];
+  for (const p of anotadosTarde) {
+    const aDeudas = Math.max((p.aplicado_deuda ?? 0) - (p.aplicado_multa ?? 0) - (p.aplicado_lavada ?? 0), 0);
+    const guardado = Math.max(rastro.generadores[p.id!]?.sigueGuardado ?? 0, 0);
+    if (aDeudas + guardado <= 0) continue;
+    const colados = reales.filter(q => q.created_at < p.created_at && dia(q.fecha) > dia(p.fecha) && (q.aplicado_tarifa ?? 0) > 0);
+    tardes.push({ f: dia(p.fecha), guardado, aDeudas, colados });
+  }
+  /** Lo que el cliente ya tenía puesto para sus semanas al terminar ese día, de más que lo que hoy dicen.
+   *  · Lo GUARDADO en saldo a favor sigue siendo plata suya en la casa: cuenta desde el día en que pagó
+   *    (RNN72H: pagó $500.000 al 5-nov y sus dos semanas valían $390.000; $165.000 siguen guardados).
+   *  · Lo que se fue a DEUDAS pagó una deuda de verdad: solo cambia de puesto con los pagos que se le
+   *    colaron (su plata va adelante y la de ellos, la última primero, es la que pagó la deuda). Pasados
+   *    los colados todo queda como hoy: un pago de agosto no corre las semanas de octubre (IEW64I). */
+  const deMas = (d: string) => {
+    const vigentes = tardes.filter(t => t.f <= d);
+    if (vigentes.length === 0) return 0;
+    const colados = new Map<string, number>();
+    for (const t of vigentes) if (t.aDeudas > 0) for (const q of t.colados) if (dia(q.fecha) > d) colados.set(q.id!, q.aplicado_tarifa ?? 0);
+    return vigentes.reduce((s, t) => s + t.guardado, 0)
+      + Math.min(vigentes.reduce((s, t) => s + t.aDeudas, 0), [...colados.values()].reduce((s, m) => s + m, 0));
+  };
+
+  // Por cada día: lo que el cliente metió a semanas DESPUÉS de ese día, menos lo que ya tenía de más.
+  const fechas = [...new Set([...aportes.map(a => a.f), ...tardes.map(t => t.f)])].sort();
+  if (fechas.length === 0) return new Map();
+  const total = aportes.reduce((s, a) => s + a.m, 0);
+  const faltaTras: number[] = [];
+  let metido = 0;
+  for (const f of fechas) {
+    metido += aportes.filter(a => a.f === f).reduce((s, a) => s + a.m, 0);
+    faltaTras.push(total - metido - deMas(f));
+  }
 
   const pagadas = c.cajas_pagadas ?? 0;
+  // Lo que pertenece a las semanas siguientes a cada una (la en curso incluida).
+  const despuesDe = new Map<number, number>();
+  let acum = c.caja_actual_pagado ?? 0;
+  for (let n = pagadas; n >= 1; n--) { despuesDe.set(n, acum); acum += plataDe(n); }
+
   const out = new Map<number, string>();
   for (const e of eventosC) {
     if (e.fuente !== "pago" || e.caja_numero <= 0 || e.caja_numero > pagadas) continue;
-    // Cuánta plata vino DESPUÉS de completar esta semana: lo de la semana en curso y las semanas siguientes.
-    let despues = c.caja_actual_pagado ?? 0;
-    for (let n = e.caja_numero + 1; n <= pagadas; n++) despues += plataDe(n);
-    let acum = 0;
-    for (let j = aportes.length - 1; j >= 0; j--) {
-      acum += aportes[j].m;
-      if (acum > despues) { out.set(e.caja_numero, aportes[j].f); break; }
-    }
+    const despues = despuesDe.get(e.caja_numero) ?? 0;
+    const i = faltaTras.findIndex(x => x <= despues);
+    if (i >= 0) out.set(e.caja_numero, fechas[i]);
   }
   return out;
 }
@@ -802,6 +960,8 @@ export function nominaSemanaDetallada(opts: {
   /** El día en que el cliente terminó de pagar cada semana, de los contratos con pagos en desorden
    *  (D-059). Lo usa también la cuenta de lo que abonó el que no completó, para comprobarse. */
   const enOrdenPorContrato = new Map<string, Map<number, string> | null>();
+  /** El día con que se contó cada semana pagada (D-087): el reverso mira el mismo día que los renglones. */
+  const fechaUsadaPorContrato = new Map<string, Map<number, string>>();
   // LAS RETENCIONES DE CADA MOTO, con el día de Colombia (D-060). De aquí salen tres cosas: el renglón
   // de $17.500 (2), qué semana cubre cada retención (2c) y desde cuándo está retenido un contrato (1b).
   const retencionesDeMoto = new Map<string, string[]>();
@@ -832,6 +992,10 @@ export function nominaSemanaDetallada(opts: {
     if (previo && previo.cv.created_at >= cv.created_at) continue;
     convenioPorContrato.set(cv.contrato_id, { cv, fechasCubiertas: [] });
   }
+  /** La pata del acuerdo de cada contrato, para decir en el reverso cuánto le faltó de la cuota (D-087). */
+  const cuotasPorContrato = new Map<string, {
+    cv: ConvenioNomina; fechasCubiertas: string[]; cuotasQuePide: (exigencia: string, fechaCaja: string) => number;
+  }>();
   for (const info of convenioPorContrato.values()) {
     const { cv } = info;
     const pagosConv = pagos
@@ -892,17 +1056,30 @@ export function nominaSemanaDetallada(opts: {
       ? exoneradasAlDia(cvInfo.cv.periodos_exonerados ?? 0, rodadasC.filter(r => r.corrioAcuerdo && r.creada > cvInfo.cv.created_at), d)
       : (cvInfo.cv.periodos_exonerados ?? 0);
 
-    const fechaPaquete = (exigencia: string, fechaCaja: string): string | null => {
-      if (!cvInfo) return fechaCaja;
+    /** Cuántas cuotas del acuerdo tenían que estar pagas para que la semana cobrada ese día quede completa. */
+    const cuotasQuePide = (exigencia: string, fechaCaja: string): number => {
+      if (!cvInfo) return 0;
+      // «RODAR TODO» (D-087, RMM66H): desde el día en que se rodó, la semana es solo la semana. Lo que le
+      // faltaba al acuerdo se volvió semanas al final del contrato: esa pata ya no llega nunca, y Cartera
+      // tampoco la cobra. Vale para la semana que se cobra desde ese día y para la que se termina de
+      // pagar desde ese día; la que se llenó antes sin su cuota se queda sin renglón (la cuota se rodó).
+      const rodadoEl = cvInfo.cv.rodado_el;
+      if (rodadoEl && (exigencia >= rodadoEl || fechaCaja >= rodadoEl)) return 0;
       // Las cuotas RODADAS (moto guardada, mig 118) no son pata del paquete esa semana:
       // se corren al final igual que la semana. Mismo resta-antes-del-tope de siempre.
-      const req = Math.min(
+      return Math.min(
         Math.max(
           periodosConvenioCorridos(cvInfo.cv, c, new Date(exigencia + "T12:00:00")) - cuotasCorridasAl(fechaCaja),
           0,
         ),
         cvInfo.cv.numero_cuotas,
       );
+    };
+    if (cvInfo) cuotasPorContrato.set(c.id, { cv: cvInfo.cv, fechasCubiertas: cvInfo.fechasCubiertas, cuotasQuePide });
+
+    const fechaPaquete = (exigencia: string, fechaCaja: string): string | null => {
+      if (!cvInfo) return fechaCaja;
+      const req = cuotasQuePide(exigencia, fechaCaja);
       if (req <= 0) return fechaCaja;
       const convenioOk = cvInfo.fechasCubiertas[req - 1];
       if (convenioOk === undefined) return null;
@@ -914,6 +1091,12 @@ export function nominaSemanaDetallada(opts: {
       const enOrden = semanasEnOrdenDePago(c, pagosPorContrato.get(c.id) ?? [], eventosPorContrato.get(c.id) ?? [], partiturasPorContrato.get(c.id) ?? [],
         desde >= INICIO_CORTES_NOMINA);
       enOrdenPorContrato.set(c.id, enOrden);
+      // LA PLATA DEL CLIENTE POR EL DÍA EN QUE LA PAGÓ (D-087): solo desde los cortes, como D-084.
+      const delCliente = desde >= INICIO_CORTES_NOMINA
+        ? semanasConPlataDelCliente(c, pagosPorContrato.get(c.id) ?? [], eventosPorContrato.get(c.id) ?? [], partiturasPorContrato.get(c.id) ?? [])
+        : null;
+      const usadas = new Map<number, string>();
+      fechaUsadaPorContrato.set(c.id, usadas);
       for (const ev of eventosPorContrato.get(c.id) ?? []) {
         // Las cajas marcadas por un CONVENIO no se pagan por la anotación: entró papel, no
         // plata. Su plata real llega en las cuotas — que son la pata-convenio de los paquetes
@@ -921,7 +1104,13 @@ export function nominaSemanaDetallada(opts: {
         if (ev.fuente === "convenio") continue;
         // Con pagos anotados en desorden manda el día en que el cliente terminó de pagar ESA semana
         // (en orden de sus fechas); si no, el del pago que la llenó. Dónde se paga no cambia (`ubicar`).
-        const fEv = (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev);
+        let fEv = (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev);
+        // Si con su plata contada por el día en que la pagó (saldo aplicado tarde, pago anotado tarde) la
+        // semana se completó ANTES, cuenta ese día; pero solo si ese día la semana ya se cobraba.
+        const fCli = ev.caja_numero > 0 ? delCliente?.get(ev.caja_numero) : undefined;
+        const rel0 = ev.caja_numero - previas;
+        if (fCli && fCli < fEv && rel0 >= 1 && fCli >= exigenciaDe(rel0 + semanasCorridasAl(fCli))) fEv = fCli;
+        usadas.set(ev.caja_numero, fEv);
         const pagoEnLaSemana = fEv >= desde && fEv <= hasta;
         if (ev.caja_numero === 0) {
           const quien = quienEl(moto, fEv);
@@ -1244,14 +1433,37 @@ export function nominaSemanaDetallada(opts: {
         const debiaAntes = exigidasAl(masDias(desde, -1));
         debiaAlFinal = exigidasAl(hasta);
         const pagadas = c.cajas_pagadas ?? 0;
-        const llenasAntes = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha >= desde).length;
-        const llenasAlFinal = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha > hasta).length;
+        // Cada semana, con el MISMO día con que la contaron los renglones: el del pago, no el de la
+        // anotación (D-087, RML41H: la pagó el 31-oct, se anotó el 4-nov y decía «No pagó su semana»).
+        const usadas = fechaUsadaPorContrato.get(c.id);
+        const fechaDe = (e: EventoCaja) => (e.fuente === "pago" && usadas?.get(e.caja_numero)) || e.fecha;
+        const llenasAntes = pagadas - evC.filter(e => e.caja_numero > 0 && fechaDe(e) >= desde).length;
+        const llenasAlFinal = pagadas - evC.filter(e => e.caja_numero > 0 && fechaDe(e) > hasta).length;
+        // LA CUBRIÓ EL ACUERDO (D-087, IEW87I): la semana que se cobraba la marcó un acuerdo. Entró papel,
+        // no plata: no da pago, pero tampoco es «No pagó su semana».
+        const evAcuerdo = debiaAlFinal > debiaAntes
+          ? evC.find(e => e.caja_numero === debiaAlFinal && e.fuente === "convenio" && e.fecha <= hasta)
+          : undefined;
         // El prorrateo pendiente esa semana: si hoy todavía no está completo, o si se completó después.
         // Sin anotación y completo = se pagó antes de que existiera el registro (IGC48I, agosto).
         const ev0 = evC.find(e => e.caja_numero === 0);
         const prorrateoPendiente = !c.es_migrado && (c.prorrateo_total ?? 0) > 0 && dia(c.fecha_inicio_cajas) <= hasta
           && ((c.prorrateo_pagado ?? 0) < (c.prorrateo_total ?? 0) || (!!ev0 && ev0.fecha > hasta));
-        if (!prorrateoPendiente && debiaAlFinal > debiaAntes && llenasAntes >= debiaAlFinal) {
+        if (evAcuerdo) {
+          motivo = "acuerdo_cubrio";
+          const per = periodoDe(c);
+          const financio = (partiturasPorContrato.get(c.id) ?? []).flat()
+            .filter(pt => pt.tipo === "semana" && Number(pt.ref) === debiaAlFinal).reduce((s, pt) => s + Number(pt.monto ?? 0), 0);
+          const entera = financio >= valorPeriodoReal(c);
+          const cuando = fechaCorta(evAcuerdo.fecha);
+          // Sin partitura (acuerdos viejos) no se sabe cuánto puso el acuerdo: se dice sin cifra.
+          detalle = entera ? `Su ${per.nombre} la cubrió entera el acuerdo del ${cuando}: es papel, no plata, por eso no da pago.`
+            : financio > 0 ? `El acuerdo del ${cuando} le cubrió los ${plata(financio)} que le faltaban a su ${per.nombre}: es papel, no plata, por eso no da pago.`
+            : `Su ${per.nombre} la cerró el acuerdo del ${cuando}: lo que puso el acuerdo es papel, no plata, por eso no da pago.`;
+          const abono = abonoSinCompletar(c, pagosPorContrato.get(c.id) ?? [], null, desde, hasta, null, fechaReal, entera ? "entera" : "parte");
+          if (abono) detalle += ` ${abono}`;
+        }
+        else if (!prorrateoPendiente && debiaAlFinal > debiaAntes && llenasAntes >= debiaAlFinal) {
           motivo = "adelantada";
           const ev = evC.find(e => e.caja_numero === debiaAlFinal && e.fuente === "pago");
           if (ev) detalle = `Esta semana ya la tenía pagada: la pagó por adelantado el ${fechaCorta(fechaReal(ev))}`;
@@ -1263,8 +1475,14 @@ export function nominaSemanaDetallada(opts: {
       // Cuánto abonó, si abonó algo (D-084). Si no abonó nada, sigue diciendo «No pagó su semana».
       if (motivo === "no_pago") {
         const enOrden = enOrdenPorContrato.get(c.id);
+        const usadas = fechaUsadaPorContrato.get(c.id);
         detalle = abonoSinCompletar(c, pagosPorContrato.get(c.id) ?? [], eventos ? (eventosPorContrato.get(c.id) ?? []) : null,
-          desde, hasta, debiaAlFinal, ev => (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev));
+          desde, hasta, debiaAlFinal,
+          ev => (ev.caja_numero > 0 && (usadas?.get(ev.caja_numero) || enOrden?.get(ev.caja_numero))) || fechaReal(ev));
+        // LA CUOTA DEL ACUERDO (D-087, MLQ75H): la semana va con su cuota (D-022). Si abonó a la semana y
+        // la cuota tampoco estaba, se dice: «le faltaron $2.000» solo era la mitad de la verdad.
+        const falta = detalle ? faltaDelAcuerdo(c, pagosPorContrato.get(c.id) ?? [], cuotasPorContrato.get(c.id), desde, hasta) : null;
+        if (falta) detalle += ` ${falta}`;
       }
     }
     else motivo = "sin_contrato";

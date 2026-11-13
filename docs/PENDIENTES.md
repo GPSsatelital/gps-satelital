@@ -10,14 +10,20 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **13-nov-2026**.
 
-> 🔨 **(13-nov) Nómina: la plata del cliente por el día en que la pagó, el acuerdo rodado y los textos (D-087).**
-> Hecho y medido en la copia aparte `claude/heuristic-dewdney-ce820a`; **sin publicar**. Tres archivos:
+> ✅ **(13-nov) Nómina: la plata del cliente por el día en que la pagó, el acuerdo rodado y los textos (D-087).**
+> **PUBLICADO el 13-nov (6e05f0b)**, hecho en la copia aparte `claude/heuristic-dewdney-ce820a`. Cuatro archivos:
 > `nominaCobradores.ts` y su prueba, `useRodadas.ts` y `ReportesView.tsx`. Sin migración. Nadie pierde: Brandon
 > +$33.750, Ariza +$7.500, Alvarez +$3.750, Lumar +$3.750 (semanas del 26-oct al 9-nov).
-> - [ ] 🧑 **Publicarlo ANTES de cerrar la semana del 2-nov** (ya está en corte): si se cierra antes, se cierra con la cuenta vieja.
-> - [ ] 🧑 **Entregar los PDF** (escritorio: «Nomina explicada … 26 oct y 2 nov», uno por supervisor; el de Lumar es
->   aparte, no estaba en la revisión) **después de publicar**: dicen lo que la app va a mostrar. El generador está en
->   `docs/informes-nomina/hacer-informes-13nov.py` de la copia aparte (carpeta ignorada por git): pasarlo a la principal.
+> - [x] 🧑 **Publicarlo ANTES de cerrar la semana del 2-nov** ✅ publicado el 13-nov, con la semana del 2-nov todavía sin cerrar.
+> - [ ] 🧑 **Entregar los PDF** a Ariza, Brandon y Alvarez: Escritorio › `Club Moteros - Documentos` › `1 Nómina` ›
+>   `2026-11-13 Respuesta al reporte de placas`. Responden placa por placa lo que cada uno reportó (estaba bien y por
+>   qué, o qué se corrigió), como pidió el dueño; la primera versión, de explicación general, se descartó. Lumar no
+>   reportó: no lleva PDF (su RMZ69H sube $3.750). El generador, `docs/informes-nomina/hacer-respuestas-13nov.py`
+>   de la copia aparte (carpeta ignorada por git), hay que pasarlo a la principal.
+> - [ ] 💻 **Todo lo que se deje en el Escritorio va en `Club Moteros - Documentos`**, por tema y con fecha (pedido del
+>   dueño, 13-nov). Ya se ordenó lo que había. Faltan los programas de la copia principal que todavía guardan en el
+>   Escritorio suelto: `docs/avisos-zala/hacer-avisos.py` (`Desktop\Avisos ZALA`) y
+>   `docs/informes-nomina/hacer-informes-31oct.py`.
 > - [ ] 💻 Los otros dos acuerdos con «Rodar todo» (RML54H del 9-nov y YAL68H del 5-nov) no movieron plata en estas
 >   semanas: mirarlos en la nómina de la semana del 9-nov.
 

@@ -76,12 +76,4 @@ export function listaConScroll(isMobile: boolean): CSSProperties {
   };
 }
 
-// Color de cada portafolio — una sola fuente para que un grupo se vea igual en toda la app
-// (caja diaria, cartera, reportes). Antes vivía suelto en CajaView.
-export const COLOR_GRUPO: Record<string, string> = {
-  COSTA: "var(--accent-ink)",
-  PRADERA: "var(--ok-ink)",
-  RASTREADOR: "var(--warn-ink)",
-  USADAS: "var(--violet)",
-  OTRO: "var(--muted2)",
-};
+// El color de cada portafolio ya no vive acá: sale de la tabla `grupos` (mig 217) por `useGrupos().tonoDe()`.

@@ -17,6 +17,7 @@ import ImgPrivada from "../components/ImgPrivada";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useCesiones } from "../hooks/useCesiones";
 import { formatDiaPago } from "../utils/cicloPago";
+import { useGrupos } from "../hooks/useGrupos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFecha(s: string | null | undefined) {
@@ -27,13 +28,6 @@ function diasRestantes(fecha: string | null | undefined): number | null {
   if (!fecha) return null;
   return Math.ceil((new Date(fecha + "T00:00:00").getTime() - Date.now()) / 86400000);
 }
-
-const GRUPO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  RASTREADOR: { bg: "var(--accent-soft3)", color: "var(--accent-ink)", border: "#3b82f6" },
-  COSTA:      { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
-  PRADERA:    { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
-  OTRO:       { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
-};
 
 const ESTADO_MOTO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   Disponible:  { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
@@ -150,6 +144,7 @@ export default function FichaMotoView({ motoId, onNavigate, volver }: {
   }, []);
 
   const { motos } = useMotos();
+  const { tonoDe } = useGrupos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { taller } = useTaller();
@@ -206,7 +201,8 @@ export default function FichaMotoView({ motoId, onNavigate, volver }: {
   }
 
   const ec = ESTADO_MOTO_COLORS[moto.estado] ?? { bg: "var(--line)", color: "var(--muted2)", border: "var(--faint)" };
-  const gColor = GRUPO_COLORS[moto.grupo] ?? { bg: "var(--line)", color: "var(--muted2)", border: "var(--faint)" };
+  const tonoGrupo = tonoDe(moto.grupo);
+  const gColor = { bg: tonoGrupo.suave, color: tonoGrupo.letra, border: tonoGrupo.solido };
   const diasSoat = diasRestantes(moto.fecha_seguro);
   const diasTecno = diasRestantes(moto.fecha_tecnomecanica);
   const costoTotalTaller = ordenesTodo.reduce((s, t) => s + (t.costo ?? 0), 0);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useContratos, calcularFechaFinContrato, ahorroTotal, empalmePendiente, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -157,6 +158,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { paraFiltrar: paraFiltrarGrupos } = useGrupos();
   // Ver CobrosView: un préstamo de reemplazo guarda la moto y no deja recepción.
   const { prestamos } = usePrestamos();
 
@@ -212,7 +214,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     });
   }, [contratos, filtroEstado, filtroGrupo, busqueda, clientes, motos]);
 
-  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  // Los grupos prendidos y los que todavía tengan motos (mig 217): ya no es una lista escrita a mano.
+  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", ...paraFiltrarGrupos(motos.map(m => m.grupo))];
   function ChipsGrupo() {
     return (
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>

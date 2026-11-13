@@ -8,6 +8,9 @@ import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
 import { useMensajesWhatsapp, MENSAJES_META, type ClaveMensaje } from "../hooks/useMensajesWhatsapp";
 import { useCuentasBancarias, type CuentaBancaria } from "../hooks/useCuentasBancarias";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../lib/theme";
+import { useGrupos } from "../hooks/useGrupos";
+import SelectGrupo from "../components/SelectGrupo";
+import SeccionGrupos from "../components/SeccionGrupos";
 
 // ── Estilos compartidos ────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
@@ -36,7 +39,7 @@ const primaryBtn: React.CSSProperties = {
 };
 
 // ── Tipos usuarios ─────────────────────────────────────────────────────────────
-type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
+type GrupoSocio = string;   // uno de la tabla `grupos` (mig 217)
 type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null };
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -112,7 +115,7 @@ function SelectorAccesos({ accesos, onToggle }: { accesos: ViewKey[]; onToggle: 
 function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario; onClose: () => void; onGuardado: () => void }) {
   const [nombre, setNombre] = useState(usuario.nombre);
   const [role, setRole] = useState<Role>(usuario.role);
-  const [grupo, setGrupo] = useState<GrupoSocio>((usuario.grupo as GrupoSocio) ?? "RASTREADOR");
+  const [grupo, setGrupo] = useState<GrupoSocio>(usuario.grupo ?? "");
   const [accesos, setAccesos] = useState<ViewKey[]>(
     Array.isArray(usuario.permisos) ? (usuario.permisos as ViewKey[]) : (ACCESOS_SUGERIDOS[usuario.role] ?? [])
   );
@@ -133,6 +136,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   async function guardar() {
     setError(null); setOk(null);
     if (!nombre.trim()) { setError("El nombre no puede quedar vacío."); return; }
+    if (isSocio && !grupo) { setError("Escoja el grupo del socio."); return; }
     setGuardando(true);
     const { error } = await invocar({ action: "update", id: usuario.id, nombre: nombre.trim(), role, ...(isSocio ? { grupo } : {}), permisos: isSocio ? [] : accesos });
     setGuardando(false);
@@ -166,12 +170,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
           </div>
           {isSocio ? (
             <div><div style={labelStyle}>Grupo / portafolio</div>
-              <select style={inputStyle} value={grupo} onChange={e => setGrupo(e.target.value as GrupoSocio)}>
-                <option value="RASTREADOR">Rastreador</option>
-                <option value="COSTA">Costa</option>
-                <option value="PRADERA">Pradera</option>
-                <option value="USADAS">Usadas Club</option>
-              </select>
+              <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
             </div>
           ) : (
             <div><div style={labelStyle}>Accesos a módulos</div><SelectorAccesos accesos={accesos} onToggle={toggleAcceso} /></div>
@@ -303,6 +302,8 @@ export default function ConfiguracionView() {
   const { profile, puede } = useAuth();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const puedeEditarConfig = puede("editar_configuracion"); // default ADMIN, igual que esAdmin
+  const esDueno = profile?.role === "ADMIN_PRINCIPAL";
+  const { tonoDe } = useGrupos();
 
   // Mi cuenta
   const [editandoNombre, setEditandoNombre] = useState(false);
@@ -328,7 +329,7 @@ export default function ConfiguracionView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("SECRETARIA");
-  const [grupo, setGrupo] = useState<GrupoSocio>("RASTREADOR");
+  const [grupo, setGrupo] = useState<GrupoSocio>("");
   const [accesos, setAccesos] = useState<ViewKey[]>(ACCESOS_SUGERIDOS.SECRETARIA);
   const [formError, setFormError] = useState<string | null>(null);
   const [formOk, setFormOk] = useState<string | null>(null);
@@ -351,12 +352,13 @@ export default function ConfiguracionView() {
     setFormError(null); setFormOk(null);
     if (!nombre.trim() || !email.trim() || !password) { setFormError("Completa nombre, correo y contraseña."); return; }
     if (password.length < 6) { setFormError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (role === "SOCIO" && !grupo) { setFormError("Escoja el grupo del socio."); return; }
     setCreando(true);
     const { error } = await invocar({ action: "create", nombre: nombre.trim(), email: email.trim(), password, role, ...(role === "SOCIO" ? { grupo } : {}), permisos: role === "SOCIO" ? [] : accesos });
     setCreando(false);
     if (error) { setFormError(error); return; }
     setFormOk(`Usuario "${nombre.trim()}" creado.`);
-    setNombre(""); setEmail(""); setPassword(""); cambiarRole("SECRETARIA"); setGrupo("RASTREADOR");
+    setNombre(""); setEmail(""); setPassword(""); cambiarRole("SECRETARIA"); setGrupo("");
     setMostrarFormCrear(false);
     cargarUsuarios();
   }
@@ -479,12 +481,7 @@ export default function ConfiguracionView() {
                 </div>
                 {role === "SOCIO" ? (
                   <div><div style={labelStyle}>Grupo / portafolio</div>
-                    <select style={inputStyle} value={grupo} onChange={e => setGrupo(e.target.value as GrupoSocio)}>
-                      <option value="RASTREADOR">Rastreador</option>
-                      <option value="COSTA">Costa</option>
-                      <option value="PRADERA">Pradera</option>
-                      <option value="USADAS">Usadas Club</option>
-                    </select>
+                    <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>El socio solo verá el dashboard de su grupo.</div>
                   </div>
                 ) : (
@@ -515,7 +512,7 @@ export default function ConfiguracionView() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 14 }}>{u.nombre}</div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {u.role === "SOCIO" && u.grupo && <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{u.grupo}</span>}
+                        {u.role === "SOCIO" && u.grupo && <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: tonoDe(u.grupo).suave, color: tonoDe(u.grupo).letra, border: `1px solid ${tonoDe(u.grupo).solido}` }}>{u.grupo}</span>}
                         <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>{roleLabel(u.role)}</span>
                       </div>
                     </div>
@@ -623,6 +620,9 @@ export default function ConfiguracionView() {
         )}
       </div>
 
+      {/* ── Grupos o portafolios (solo el dueño: mig 217) ── */}
+      {esDueno && <SeccionGrupos estiloTarjeta={card} estiloTitulo={sectionTitle} />}
+
       {/* ── Cuentas bancarias (solo admins) ── */}
       {puedeEditarConfig && <SeccionCuentasBancarias />}
 
@@ -698,12 +698,12 @@ function SeccionApariencia() {
 // Antes solo vivían en la cabeza de la gente. Guardarlas permite saber a qué portafolio
 // pertenece una transferencia (cuando la cuenta es de un solo grupo) y, más adelante,
 // decirle al cliente por WhatsApp a dónde pagar.
-const GRUPOS_CUENTA = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"] as const;
 
 const FORM_VACIO = { banco: "", tipo: "Nequi", numero: "", titular: "", grupos: [] as string[], orden: 0 };
 
 function SeccionCuentasBancarias() {
   const { cuentas, loading, crear, actualizar, desactivar } = useCuentasBancarias();
+  const { codigosPrendidos } = useGrupos();
   const [form, setForm] = useState(FORM_VACIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [abierto, setAbierto] = useState(false);
@@ -835,7 +835,8 @@ function SeccionCuentasBancarias() {
                 ¿Qué grupos reciben plata en esta cuenta?
               </label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {GRUPOS_CUENTA.map(g => {
+                {/* Los prendidos, y los que ya tenga la cuenta aunque estén apagados (para poder quitarlos). */}
+                {[...codigosPrendidos, ...form.grupos.filter(g => !codigosPrendidos.includes(g))].map(g => {
                   const activo = form.grupos.includes(g);
                   return (
                     <button key={g} onClick={() => toggleGrupo(g)}

@@ -100,10 +100,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   deja cerrarse a mano. 13 pruebas nuevas; `tsc`, 1.195 pruebas y build en verde; probado en el navegador a 375 px
 >   (doble clic real: llegó 1 toque y salió 1 mensaje). Falta mirarlo con un mensaje de verdad la primera vez. Se
 >   publica subiendo esos archivos por su nombre, con sus dos pruebas.
-> - **Módulo de grupos o portafolios** (pedido del 7-nov). **Diseño aprobado el 7-nov (D-067); nada construido.** Los
->   grupos se crean, cambian de color, se apagan y se encienden desde Configuración, solo el Administrador principal,
->   y USADAS pasa a llamarse CAPITAL MOTOS. Va después del efectivo y del acta. El plan, el orden y las pruebas de
->   terminado están en P3.
+> - **Módulo de grupos o portafolios** (pedido del 7-nov, D-067). **11-nov: la 217 corrida, las pantallas y la sección
+>   Grupos hechas y probadas, sin publicar; la 218 escrita, sin correr.** Los grupos se crean, cambian de color, se
+>   apagan y se encienden desde Configuración, solo el Administrador principal, y USADAS pasa a llamarse CAPITAL MOTOS
+>   (violeta, D-074). Lo que falta, en orden, está en P3.
 
 > **AL ARRANCAR (6-nov) — tres pedidos del 5-nov en la noche, cada uno con su propia sesión, esperando al dueño.**
 > Ninguno tocó la app ni la base. Nada de esto está subido a git.
@@ -1248,6 +1248,37 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] **Módulo de grupos o portafolios** (desarrollo): crear, cambiar el color, apagar y encender grupos desde la
   app. **Diseño aprobado el 7-nov (D-067); nada construido.** Las decisiones y su porqué están en D-067; acá va el cómo.
+  - **10-nov: el dueño pidió arrancarlo** (USADAS → CAPITAL MOTOS confirmado; el grupo nuevo lo crea él desde la
+    pantalla, con su nombre y color). Se midió la base viva y el código y se cortó ahí; nada escrito. Lo medido y
+    el diseño de la 217 están en la memoria `modulo-grupos-portafolios`. Cambia el plan de abajo: `profiles` no
+    tiene regla de grupo viva, y hay dos tablas más con grupo que el plan no tenía: `caja_diaria` (10 filas) e
+    `ingresos_no_identificados` (238). Antes de escribir la sección Grupos, mostrarle el dibujo al dueño.
+  - ✅ **11-nov: la 217 CORRIDA y verificada** (`supabase/217_grupos_portafolios.sql`). La verificación dio lo
+    esperado: 5 grupos (COSTA verde, OTRO gris apagado, PRADERA ámbar, RASTREADOR azul, USADAS naranja), 6 llaves,
+    0 reglas viejas, 2 políticas, tiempo real y `zala.portafolios` legible; la prueba de adentro (14 pasos) pasó.
+    Desde la app con la sesión del dueño, `grupos_uso()` da lo mismo que la base (COSTA 228 motos · PRADERA 56 + 2
+    vendidas · RASTREADOR 102 · USADAS 14). Prueba espejo con el código de producción (HEAD): 362 contratos, **0
+    diferencias**. Con el código del PC salen 155, todas de los campos del próximo pago: son del arreglo de la
+    DPU45I sin publicar y de la 219 sin correr, no de la 217. Siguiente: el dibujo de la sección Grupos (mostrado
+    el 11-nov) → las pantallas.
+  - ✅ **11-nov: las pantallas y la sección Grupos HECHAS, sin publicar.** La lista y los colores salen de un solo
+    lugar (`utils/grupos.ts`, `hooks/useGrupos.ts`, `components/SelectGrupo.tsx`, `components/SeccionGrupos.tsx` y 8
+    colores en `index.css`, de día, de noche y al imprimir). Ya no quedan nombres de grupo escritos a mano en `src/`.
+    La app ya no escoge RASTREADOR sola (moto nueva, socio, Excel, panel del socio). `manage-users` lee los grupos de
+    la tabla (sin publicar). `tsc` limpio, 1.210 pruebas y build bien. Probado en el navegador a 375 px, de día y de
+    noche: la sección cuadra con `grupos_uso()` y nada se desborda. **No se apretó «Crear grupo»** (lo hace el dueño).
+    - **Falta, en orden:** (1) publicar solo esto, después de las 6 p. m. y separado de la DPU45I y del acta
+      (CobrosView y MotosView tienen bloques de las dos cosas: método `publicar-una-parte-del-trabajo`); (2) el dueño
+      corre la 218; (3) publicar `manage-users`; (4) el dueño crea el grupo nuevo; (5) las 8 pruebas de abajo; (6)
+      `CLAUDE.md`, `DICCIONARIO-ESTADOS` y prueba espejo después de la 218.
+    - **Visto y sin tocar:** en Cobro Diario, `grupoDePagoCaja` no recibe `tipo_registro` y en Caja sí, así que el
+      alquiler de una prestada puede caer en un portafolio en Cobro Diario y en otro en Caja. Es de antes.
+  - **218 escrita, sin correr** (`supabase/218_usadas_pasa_a_capital_motos.sql`): revisa antes (existe la 217, existe
+    USADAS, no existe CAPITAL MOTOS, el violeta está libre, ningún socio es de USADAS), cuenta antes y después (motos,
+    fotos, cuentas, premios, abonos, cajas, ingresos, contratos vivos) y se deshace si no cuadra; cambia el nombre y
+    el color, el nombre dentro del reparto del premio (la plata no) y deja 2 filas en el historial. Si queda USADAS en
+    una columna de grupo, se deshace; si queda dentro de un JSON, solo avisa. Medido hoy: 14 motos, 148 fotos, 1
+    cuenta («Llave de Breve») y 1 premio (COSTA $40.000 + USADAS $20.000).
   - **Cuándo:** después del bloqueo del efectivo (D-065) y del acta de entrega (D-066), ya en el otro PC. No publicar
     lunes ni miércoles antes de las 6 p. m.: toca Caja y Cobro Diario.
   - **Antes de editar:** confirmar con el dueño que ningún otro trabajo está tocando los mismos archivos. Se cruza con
@@ -1271,7 +1302,8 @@ Lo que está afectando cifras reales de clientes en este momento.
     - conteo de motos y contratos vivos por grupo antes y después, en el mismo paso; si no coincide, se deshace;
     - no cambian: `mi_grupo()`, `mis_*_socio()`, las políticas del socio, el disparador de la 031, `handle_new_user`,
       `zala._corte_migracion` ni `CORTE_POR_GRUPO` (USADAS no tiene fecha de corte propia).
-  - **Base, migración 218 (USADAS pasa a CAPITAL MOTOS):** el nombre cambia en `grupos` (llega solo a sus 14 motos),
+  - **Base, migración 218 (USADAS pasa a CAPITAL MOTOS):** 🎨 **y su color pasa de naranja a violeta (D-074, 11-nov)**,
+    con su fila «color» en el historial. El nombre cambia en `grupos` (llega solo a sus 14 motos),
     en su cuenta (`array_replace`), en `cartera_del_dia` (96 filas al 6-nov; crecen cada día) y en el premio de
     referidos ya entregado (solo el nombre; la plata no). Fila en el historial y conteos antes y después. Después:
     prueba espejo, `CLAUDE.md` (la tabla de grupos y la fila de grupos válidos en ERRORES PASADOS) y

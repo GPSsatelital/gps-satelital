@@ -14,13 +14,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { totalesPorCuenta } from "../utils/cuentasDelDia";
-import { COLOR_GRUPO } from "../styles/shared";
+import { useGrupos } from "../hooks/useGrupos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const GRUPOS: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
 
 export default function CajaView() {
   const hoyDefault = hoyISO();
@@ -67,6 +66,7 @@ export default function CajaView() {
   const { pendientes: pendientesNI, registrar: registrarNI, eliminar: eliminarNI } = useIngresosNoIdentificados();
   const { abonos: abonosBase } = useAbonosBase();
   const { activas: cuentasActivas } = useCuentasBancarias();
+  const { grupos: listaGrupos, paraFiltrar, tonoDe } = useGrupos();
 
   const pagosDia = useMemo(() =>
     // esPagoDeCaja: los pagos internos (adelanto de base) NO entran a la caja diaria.
@@ -75,6 +75,11 @@ export default function CajaView() {
     pagos.filter(p => fechaDeCaja(p) === fecha && esPagoDeCaja(p)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [pagos, fecha]
   );
+  // Los grupos prendidos, más cualquiera que tenga plata este día aunque ya esté apagado: si no,
+  // esa plata quedaría fuera de los cierres sin que nadie se diera cuenta.
+  const GRUPOS = useMemo(() => paraFiltrar(pagosDia.map(p => grupoDePago(p))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listaGrupos, pagosDia, contratos, motos, prestamos]);
 
   function getInfo(contratoId: string) {
     const c = contratos.find(ct => ct.id === contratoId);
@@ -150,7 +155,7 @@ export default function CajaView() {
       return { grupo: g, ...r, count: r.confirmados };
     }).filter(x => x.total > 0 || x.pendientes.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagosDia, contratos, motos]);
+  }, [pagosDia, contratos, motos, GRUPOS]);
 
   const pagosEfectivo = useMemo(() => pagosDiaVista.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo"), [pagosDiaVista]);
   const pagosTransfer = useMemo(() => pagosDiaVista.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia"), [pagosDiaVista]);
@@ -507,7 +512,7 @@ export default function CajaView() {
           <button
             onClick={() => abrirCierre(grupoEnVista)}
             disabled={resumen.total === 0}
-            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "var(--line)" : COLOR_GRUPO[grupoEnVista], color: resumen.total === 0 ? "var(--faint)" : "var(--card)", fontSize: 14, fontWeight: 700, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
+            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "var(--line)" : tonoDe(grupoEnVista).letra, color: resumen.total === 0 ? "var(--faint)" : "var(--card)", fontSize: 14, fontWeight: 700, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
           >
             Cerrar caja de {grupoEnVista} — ${fmt(resumen.total)}
           </button>
@@ -609,7 +614,7 @@ export default function CajaView() {
             onClick={() => setFiltroGrupo(g)}
             style={{
               border: "none", borderRadius: 999, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
-              background: filtroGrupo === g ? (g === "todos" ? "var(--text)" : COLOR_GRUPO[g as GrupoMoto]) : "var(--soft)",
+              background: filtroGrupo === g ? (g === "todos" ? "var(--text)" : tonoDe(g).letra) : "var(--soft)",
               color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
             }}
           >
@@ -632,11 +637,11 @@ export default function CajaView() {
               return (
                 <div
                   key={g.grupo}
-                  style={{ border: `1px solid ${COLOR_GRUPO[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}
+                  style={{ border: `1px solid ${tonoDe(g.grupo).suave}`, borderLeft: `4px solid ${tonoDe(g.grupo).solido}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}
                 >
                   <div onClick={() => setFiltroGrupo(g.grupo)} style={{ cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: tonoDe(g.grupo).letra, textTransform: "uppercase" }}>{g.grupo}</span>
                       {cerrada && (difCierre
                         ? <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", padding: "2px 8px", borderRadius: 999 }}>⚠️ El cierre cambió</span>
                         : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>
@@ -668,7 +673,7 @@ export default function CajaView() {
                   {puedeCerrarCaja && (!cerrada ? g.total > 0 : !!difCierre) && (
                     <button
                       onClick={() => abrirCierre(g.grupo)}
-                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: cerrada ? "var(--warn-ink)" : COLOR_GRUPO[g.grupo], color: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: cerrada ? "var(--warn-ink)" : tonoDe(g.grupo).letra, color: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                     >
                       {cerrada ? `Actualizar cierre de ${g.grupo}` : `Cerrar caja de ${g.grupo}`}
                     </button>
@@ -742,7 +747,7 @@ export default function CajaView() {
 
       {/* Aviso cuando se está viendo un grupo filtrado */}
       {filtroGrupo !== "todos" && (
-        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: `${COLOR_GRUPO[filtroGrupo]}14`, border: `1px solid ${COLOR_GRUPO[filtroGrupo]}33`, fontSize: 13, color: COLOR_GRUPO[filtroGrupo], fontWeight: 700 }}>
+        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: tonoDe(filtroGrupo).suave, border: `1px solid ${tonoDe(filtroGrupo).solido}`, fontSize: 13, color: tonoDe(filtroGrupo).letra, fontWeight: 700 }}>
           Viendo solo el grupo {filtroGrupo}. Cada grupo se cierra por aparte.
         </div>
       )}
@@ -878,7 +883,7 @@ export default function CajaView() {
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%" }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: COLOR_GRUPO[grupoACerrar] }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: tonoDe(grupoACerrar).letra }}>
               {previoModal ? `Actualizar cierre de ${grupoACerrar}` : `Cerrar caja de ${grupoACerrar}`}
             </h3>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>{fechaDisplay}</p>
@@ -903,9 +908,9 @@ export default function CajaView() {
                 <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent-ink)" }}>${fmt(rc.transfer)}</div>
               </div>
             </div>
-            <div style={{ background: COLOR_GRUPO[grupoACerrar], borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>{previoModal ? "Nuevo total del día" : "Total a cerrar"} — {grupoACerrar}</div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: "#ffffff" }}>${fmt(rc.total)}</div>
+            <div style={{ background: tonoDe(grupoACerrar).letra, borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "var(--card)", opacity: 0.75, textTransform: "uppercase" }}>{previoModal ? "Nuevo total del día" : "Total a cerrar"} — {grupoACerrar}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: "var(--card)" }}>${fmt(rc.total)}</div>
             </div>
             {rc.pendientes.length > 0 && (
               <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>

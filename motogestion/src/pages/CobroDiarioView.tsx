@@ -3,6 +3,7 @@ import type { ViewKey } from "../App";
 import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
 import { usePagos, calcularAplicacion, esPagoDeCaja, fechaDeCaja, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -47,8 +48,6 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 type Tab = "diario" | "periodico" | "gabela" | "pagaron" | "caja";
 
-const GRUPOS_CAJA: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
-const COLOR_GRUPO_CAJA: Record<GrupoMoto, string> = { COSTA: "var(--accent-ink)", PRADERA: "var(--ok-ink)", RASTREADOR: "var(--warn-ink)", USADAS: "var(--violet)", OTRO: "var(--muted2)" };
 const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -200,6 +199,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { cerrarCaja, cajaDia } = useCaja();
   const { prestamos } = usePrestamos();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
+  const { paraFiltrar, tonoDe } = useGrupos();
 
   // El efectivo de la oficina exige la firma, la huella y la foto del cliente (D-065, mig 215).
   const contratoCobro = cobrandoId ? contratos.find(c => c.id === cobrandoId) : null;
@@ -974,7 +974,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const grupoDePagoCaja = (contratoId: string): GrupoMoto | null =>
           grupoDePagoCompartido(contratoId, contratos, motos, prestamos) as GrupoMoto | null;
         // Desglose del día por grupo (cada portafolio se cierra por aparte).
-        const porGrupoCaja = GRUPOS_CAJA.map(g => {
+        // Los prendidos y cualquiera que tenga plata hoy aunque esté apagado (si no, esa plata no se cerraría).
+        const porGrupoCaja = paraFiltrar(pagosHoy.map(p => grupoDePagoCaja(p.contrato_id))).map(g => {
           const lista = pagosHoy.filter(p => grupoDePagoCaja(p.contrato_id) === g);
           const ef = lista.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
           const tr = lista.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
@@ -1076,10 +1077,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   </div>
                 )}
                 {porGrupoCaja.map(g => (
-                  <div key={g.grupo} style={{ border: `1px solid ${COLOR_GRUPO_CAJA[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO_CAJA[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}>
+                  <div key={g.grupo} style={{ border: `1px solid ${tonoDe(g.grupo).suave}`, borderLeft: `4px solid ${tonoDe(g.grupo).solido}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_GRUPO_CAJA[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: tonoDe(g.grupo).letra, textTransform: "uppercase" }}>{g.grupo}</span>
                         <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 8 }}>Ef. ${fmt(g.efectivo)} · Tr. ${fmt(g.transfer)} · {g.count} pago{g.count !== 1 ? "s" : ""}</span>
                       </div>
                       <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>${fmt(g.total)}</span>
@@ -1095,7 +1096,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                         style={{
                           width: "100%", padding: "11px", borderRadius: 10, border: "none",
                           cursor: cerrandoCaja !== null ? "not-allowed" : "pointer",
-                          fontWeight: 700, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "var(--card)",
+                          fontWeight: 700, fontSize: 13, background: tonoDe(g.grupo).letra, color: "var(--card)",
                           opacity: cerrandoCaja === g.grupo ? 0.7 : 1,
                         }}
                       >

@@ -13,6 +13,8 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
 import { listaConScroll } from "../styles/shared";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { useMotos, enLaEmpresa, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData, type DestinoLiberacion } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
+import SelectGrupo from "../components/SelectGrupo";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -110,6 +112,7 @@ import type { ViewKey } from "../App";
 export default function MotosView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile, puede } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
+  const { paraFiltrar: paraFiltrarGrupos } = useGrupos();
   // Acciones sensibles con permiso por persona (defaults: recolectar/liquidar=ADMIN+SUBADMIN, grupo=ADMIN)
   const puedeRecolectar = puede("recolectar_moto");
   const puedeLiquidar = puede("iniciar_liquidacion");
@@ -240,7 +243,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   const [form, setForm] = useState({
     placa: "",
-    grupo: "RASTREADOR" as GrupoMoto,
+    grupo: "" as GrupoMoto,   // vacío a propósito: antes caía en RASTREADOR sin que nadie lo escogiera
     marca: "",
     modelo: "",
     color: "",
@@ -348,7 +351,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     ];
   }, [contratos, clientes, subadmins]);
 
-  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  // Los grupos prendidos y los que todavía tengan motos (mig 217): ya no es una lista escrita a mano.
+  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", ...paraFiltrarGrupos(motos.map(m => m.grupo))];
   // Se llama como {ChipsGrupo()} y no como <ChipsGrupo />: lleva una lista desplegable y, como
   // componente nacido dentro de otro, se rearmaría en cada cambio y perdería el foco.
   function ChipsGrupo() {
@@ -634,6 +638,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       setFormError("Completa placa, marca y modelo.");
       return;
     }
+    if (!form.grupo) { setFormError("Escoge el grupo de la moto."); return; }
 
     setGuardando(true);
     setFormError(null);
@@ -665,7 +670,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     }
 
     setForm({
-      placa: "", grupo: "RASTREADOR" as const, marca: "", modelo: "", color: "", numero_motor: "", numero_chasis: "",
+      placa: "", grupo: "" as GrupoMoto, marca: "", modelo: "", color: "", numero_motor: "", numero_chasis: "",
       lugar_matricula: "", cilindraje: "", fecha_seguro: "", fecha_tecnomecanica: "",
       propietario: "", numero_serie: "", estado: "Disponible" as const, observaciones: "", condicion_ingreso: "nueva" as const,
     });
@@ -717,12 +722,10 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>Grupo</div>
               {/* Cambiar de grupo mueve la moto entre portafolios de socios — permiso aparte */}
-              <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
+              <SelectGrupo value={editForm.grupo ?? selectedMoto.grupo} onChange={g => setEditForm(f => ({ ...f, grupo: g }))}
                 disabled={!puedeCambiarGrupo}
                 title={!puedeCambiarGrupo ? "No tienes permiso para cambiar el grupo (mueve la moto entre portafolios de socios)" : ""}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13, opacity: puedeCambiarGrupo ? 1 : 0.6, cursor: puedeCambiarGrupo ? "pointer" : "not-allowed" }}>
-                {(["COSTA","PRADERA","RASTREADOR","USADAS"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13, opacity: puedeCambiarGrupo ? 1 : 0.6, cursor: puedeCambiarGrupo ? "pointer" : "not-allowed" }} />
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>Observaciones</div>
@@ -1146,12 +1149,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 </select>
               </Field>
               <Field label="Grupo operativo">
-                <select style={inputStyle} value={form.grupo} onChange={(e) => setForm((p) => ({ ...p, grupo: e.target.value as GrupoMoto }))}>
-                  <option value="COSTA">Club Moteros Costa</option>
-                  <option value="PRADERA">Club Moteros Pradera</option>
-                  <option value="RASTREADOR">Club Moteros Rastreador</option>
-                  <option value="USADAS">Usadas Club</option>
-                </select>
+                <SelectGrupo style={inputStyle} value={form.grupo} onChange={g => setForm((p) => ({ ...p, grupo: g }))} />
               </Field>
               <Field label="Marca"><input style={inputStyle} value={form.marca} onChange={(e) => setForm((p) => ({ ...p, marca: e.target.value.toUpperCase() }))} /></Field>
               <Field label="Modelo (año)"><input style={inputStyle} value={form.modelo} onChange={(e) => setForm((p) => ({ ...p, modelo: e.target.value.toUpperCase() }))} /></Field>

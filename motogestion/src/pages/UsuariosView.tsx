@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { Role } from "../contexts/AuthContext";
 import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
+import SelectGrupo from "../components/SelectGrupo";
 import { ACCIONES, calcularPuede, type AccionesUsuario, type EstadoAccion } from "../lib/acciones";
 
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line2)", outline: "none", fontSize: 14, boxSizing: "border-box" };
@@ -10,7 +11,7 @@ const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWei
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "#0f172a", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" };
 
-type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
+type GrupoSocio = string;   // uno de la tabla `grupos` (mig 217)
 type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null; email: string | null; whatsapp?: string | null };
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -112,7 +113,7 @@ export default function UsuariosView() {
   const [password, setPassword] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [role, setRole] = useState<Role>("SECRETARIA");
-  const [grupo, setGrupo] = useState<GrupoSocio>("RASTREADOR");
+  const [grupo, setGrupo] = useState<GrupoSocio>("");
   const [accesos, setAccesos] = useState<ViewKey[]>(ACCESOS_SUGERIDOS.SECRETARIA);
   const [formError, setFormError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -163,6 +164,7 @@ export default function UsuariosView() {
     setInfo(null);
     if (!nombre.trim() || !email.trim() || !password) { setFormError("Completa nombre, correo y contraseña."); return; }
     if (password.length < 6) { setFormError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (role === "SOCIO" && !grupo) { setFormError("Escoja el grupo del socio."); return; }
 
     setCreando(true);
     const { error } = await invocar({
@@ -177,7 +179,7 @@ export default function UsuariosView() {
     if (error) { setFormError(error); return; }
     setInfo(`Usuario "${nombre.trim()}" creado con rol ${roleLabel(role)}.`);
     setNombre(""); setEmail(""); setPassword("");
-    cambiarRole("SECRETARIA"); setGrupo("RASTREADOR");
+    cambiarRole("SECRETARIA"); setGrupo("");
     cargarUsuarios();
   }
 
@@ -223,12 +225,7 @@ export default function UsuariosView() {
             {isSocio ? (
               <div>
                 <div style={labelStyle}>Grupo / portafolio</div>
-                <select style={inputStyle} value={grupo} onChange={e => setGrupo(e.target.value as GrupoSocio)}>
-                  <option value="RASTREADOR">Rastreador</option>
-                  <option value="COSTA">Costa</option>
-                  <option value="PRADERA">Pradera</option>
-                  <option value="USADAS">Usadas Club</option>
-                </select>
+                <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
               </div>
             ) : (
@@ -407,7 +404,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   const [cedula, setCedula] = useState("");
   const [cedulaGuardada, setCedulaGuardada] = useState("");
   const [role, setRole] = useState<Role>(usuario.role);
-  const [grupo, setGrupo] = useState<GrupoSocio>((usuario.grupo as GrupoSocio) ?? "RASTREADOR");
+  const [grupo, setGrupo] = useState<GrupoSocio>(usuario.grupo ?? "");
   const [accesos, setAccesos] = useState<ViewKey[]>(
     Array.isArray(usuario.permisos) ? (usuario.permisos as ViewKey[]) : (ACCESOS_SUGERIDOS[usuario.role] ?? [])
   );
@@ -469,6 +466,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
     setError(null); setOk(null);
     if (!nombre.trim()) { setError("El nombre no puede quedar vacío."); return; }
     if (!email.trim()) { setError("El correo no puede quedar vacío."); return; }
+    if (isSocio && !grupo) { setError("Escoja el grupo del socio."); return; }
     const ced = cedula.replace(/\D/g, "");
     if (llevaCedula && ced && (ced.length < 5 || ced.length > 12)) {
       setError("Revise la cédula: debe tener entre 5 y 12 números.");
@@ -561,12 +559,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
           {isSocio ? (
             <div>
               <div style={labelStyle}>Grupo / portafolio</div>
-              <select style={inputStyle} value={grupo} onChange={e => setGrupo(e.target.value as GrupoSocio)}>
-                <option value="RASTREADOR">Rastreador</option>
-                <option value="COSTA">Costa</option>
-                <option value="PRADERA">Pradera</option>
-                <option value="USADAS">Usadas Club</option>
-              </select>
+              <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
             </div>
           ) : (
             <div>

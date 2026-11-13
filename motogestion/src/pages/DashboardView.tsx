@@ -155,7 +155,8 @@ export default function DashboardView({ onNavigate }: {
 
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;
 
-    const grupos = ["COSTA","PRADERA","RASTREADOR","USADAS","OTRO"] as const;
+    // Los grupos que tienen motos, en orden alfabético (solo se muestran los que tienen alguna).
+    const grupos = [...new Set(motosFlota.map(m => m.grupo))].sort((a, b) => a.localeCompare(b, "es"));
     const porGrupo = grupos.map(g => ({
       g,
       asignadas:   motosFlota.filter(m => m.grupo === g && m.estado === "Asignada").length,

@@ -4,6 +4,7 @@ import { usePagos, esPagoDeCaja, type Pago } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
 import { usePrestamos, grupoDePago } from "../hooks/usePrestamos";
 import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -13,15 +14,13 @@ import { listaConScroll } from "../styles/shared";
 import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
 import { useAuth } from "../contexts/AuthContext";
 
-// "sin" agrupa lo que no cae en ningún portafolio: grupo OTRO, contratos sin moto asignada y
-// pagos cuyo contrato/moto ya no existe. Va explícito para que la suma de los chips dé SIEMPRE
-// el total — si se ocultaran, el dueño sumaría los 4 grupos y le faltaría plata sin saber por qué.
-const GRUPOS_FILTRO = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS", "sin"] as const;
-type FiltroGrupo = typeof GRUPOS_FILTRO[number];
-const ETIQUETA_GRUPO: Record<FiltroGrupo, string> = {
-  todos: "Todos", COSTA: "COSTA", PRADERA: "PRADERA",
-  RASTREADOR: "RASTREADOR", USADAS: "USADAS", sin: "Sin grupo",
-};
+// Los chips: "todos", cada grupo (los prendidos y cualquiera que tenga pagos, aunque esté apagado:
+// sale de useGrupos, mig 217) y "sin", que recoge los contratos sin moto asignada y los pagos cuyo
+// contrato/moto ya no existe. Va explícito para que la suma de los chips dé SIEMPRE el total — si
+// se ocultaran, el dueño sumaría los grupos y le faltaría plata sin saber por qué.
+// "todos" y "sin" van en minúscula: un nombre de grupo siempre es en mayúscula, no se confunden.
+type FiltroGrupo = string;
+const etiquetaGrupo = (g: FiltroGrupo) => g === "todos" ? "Todos" : g === "sin" ? "Sin grupo" : g;
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -68,6 +67,7 @@ export default function HistorialPagosView({ onNavigate }: {
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { paraFiltrar: paraFiltrarGrupos } = useGrupos();
   const { prestamos } = usePrestamos();
   const { cesiones } = useCesiones();
   const { filtrarPorContrato } = useScope();
@@ -97,10 +97,7 @@ export default function HistorialPagosView({ onNavigate }: {
       if (estadoFiltro !== "todos" && p.estado !== estadoFiltro) return false;
       if (filtroGrupo !== "todos") {
         const g = grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro);
-        // "sin" recoge también los grupos raros (OTRO) para que nada quede fuera de los chips.
-        const cae = filtroGrupo === "sin"
-          ? !g || !GRUPOS_FILTRO.includes(g as FiltroGrupo)
-          : g === filtroGrupo;
+        const cae = filtroGrupo === "sin" ? !g : g === filtroGrupo;
         if (!cae) return false;
       }
       if (q) {
@@ -131,7 +128,7 @@ export default function HistorialPagosView({ onNavigate }: {
     const cuenta: Record<string, number> = { todos: base.length };
     for (const p of base) {
       const g = grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro);
-      const clave = g && GRUPOS_FILTRO.includes(g as FiltroGrupo) ? g : "sin";
+      const clave = g || "sin";
       cuenta[clave] = (cuenta[clave] ?? 0) + 1;
     }
     return cuenta;
@@ -393,9 +390,9 @@ export default function HistorialPagosView({ onNavigate }: {
             usa cuando se le rinde cuentas a un socio, y a 375px no deben quedar apretujados contra
             los selectores de arriba. Mismo átomo Chip que Motos / Clientes / Contratos. */}
         <div style={{ width: "100%", display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-          {GRUPOS_FILTRO.map(g => (
+          {["todos", ...paraFiltrarGrupos(Object.keys(conteoPorGrupo).filter(k => k !== "todos" && k !== "sin")), "sin"].map(g => (
             <Chip key={g} activo={filtroGrupo === g} count={conteoPorGrupo[g] ?? 0} onClick={() => setFiltroGrupo(g)}>
-              {ETIQUETA_GRUPO[g]}
+              {etiquetaGrupo(g)}
             </Chip>
           ))}
         </div>
@@ -460,7 +457,7 @@ export default function HistorialPagosView({ onNavigate }: {
           tituloDocumento="Historial de pagos"
           periodo={`Del ${desde} al ${hasta}`}
           resumenFiltro={[
-            filtroGrupo !== "todos" ? ETIQUETA_GRUPO[filtroGrupo] : null,
+            filtroGrupo !== "todos" ? etiquetaGrupo(filtroGrupo) : null,
             metodo !== "todos" ? metodo : null,
             estadoFiltro !== "todos" ? estadoFiltro : null,
             busqueda.trim() ? `"${busqueda.trim()}"` : null,
@@ -476,7 +473,7 @@ export default function HistorialPagosView({ onNavigate }: {
           ]}
           filasTodas={pagos}
           etiquetaTodas="todo el histórico"
-          agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) ?? "OTRO"}
+          agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) ?? "Sin grupo"}
           onCerrar={() => setAbrirDescarga(false)}
         />
       )}

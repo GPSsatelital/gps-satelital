@@ -11,7 +11,8 @@
 //    por WhatsApp abre sin sesión para quien lo reciba.
 
 import { useMemo, useState } from "react";
-import { descargarExcel, GRUPO_HEX, type CeldaX, type SeccionX, type SeccionesOpts } from "../utils/exportar";
+import { useGrupos } from "../hooks/useGrupos";
+import { descargarExcel, type CeldaX, type SeccionX, type SeccionesOpts } from "../utils/exportar";
 import { primaryBtn, secondaryBtn } from "../styles/shared";
 import { hoyISO } from "../utils/fecha";
 
@@ -74,7 +75,7 @@ type Props<T> = {
   etiquetaTodas?: string;
   /** Nombre de la sección (bloque con título de color) de cada fila. */
   agrupar?: (fila: T) => string;
-  /** Color de cada sección. Si no se pasa, usa el del portafolio (GRUPO_HEX). */
+  /** Color de cada sección. Si no se pasa, usa el del portafolio (useGrupos().hexDe). */
   colorSeccion?: (nombre: string) => string | undefined;
   /** Fila de total al pie de la hoja principal. */
   totalGeneral?: CeldaX[];
@@ -97,6 +98,7 @@ export default function ModalDescargar<T>({
     () => new Set(columnas.filter(c => c.porDefecto && !c.sensible).map(c => c.key)),
   );
   const [todas, setTodas] = useState(false);
+  const { hexDe } = useGrupos();
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [desplegado, setDesplegado] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export default function ModalDescargar<T>({
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([g, lista]) => ({
         titulo: `${g} — ${lista.length} registro${lista.length !== 1 ? "s" : ""}`,
-        color: colorSeccion?.(g) ?? GRUPO_HEX[g] ?? GRUPO_HEX.OTRO,
+        color: colorSeccion?.(g) ?? hexDe(g),
         filas: lista.map(fila),
       }));
   }, [aBajar, elegidas, agrupar, colorSeccion]);

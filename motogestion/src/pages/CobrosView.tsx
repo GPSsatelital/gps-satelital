@@ -21,6 +21,8 @@ import PanelEmpalme from "../components/PanelEmpalme";
 import PanelGuardadoMoto from "../components/PanelGuardadoMoto";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
+import { problemaNombreGrupo } from "../utils/grupos";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -650,6 +652,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { paraFiltrar: paraFiltrarGrupos } = useGrupos();
   // `filtrarContratos` se crea de nuevo en cada render y al SUBADMIN le devuelve una lista nueva
   // cada vez: sin este useMemo, toda la cuenta de la cartera se rehacía con cada movimiento de la
   // pantalla. Su resultado depende solo de la lista, de las motos (de quién es cada una) y de
@@ -1389,7 +1392,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       setActiveTab("hoy");
       setFiltroHoy(partes.hoy as FiltroHoy);
     }
-    if (partes.grupo && ["COSTA", "PRADERA", "RASTREADOR", "USADAS", "OTRO"].includes(partes.grupo)) {
+    // Cualquier nombre de grupo bien escrito (mig 217): se revisa la forma y no la lista, porque la
+    // lista puede no haber llegado todavía cuando se abre Cartera desde Reportes.
+    if (partes.grupo && problemaNombreGrupo(partes.grupo) === null) {
       setFiltroGrupoContratos(partes.grupo as GrupoMoto);
     }
     setFiltroCobradorContratos(partes.cobrador || null);
@@ -4211,7 +4216,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               </div>
             )}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: isMobile ? 6 : 12 }}>
-              {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
+              {(["todos", ...paraFiltrarGrupos(motos.map(m => m.grupo))] as ("todos" | GrupoMoto)[]).map(g => (
                 <Chip key={g} activo={filtroGrupoContratos === g} onClick={() => setFiltroGrupoContratos(g)}>
                   {g === "todos" ? "Todos" : g}
                 </Chip>

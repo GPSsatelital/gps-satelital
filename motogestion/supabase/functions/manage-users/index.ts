@@ -14,7 +14,16 @@ const corsHeaders = {
 };
 
 const ROLES_VALIDOS = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "VISITADOR"];
-const GRUPOS_VALIDOS = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+// Los grupos ya no son una lista fija: viven en la tabla `grupos` (mig 217) y los crea el dueño.
+// La llave de profiles.grupo ya impide un grupo que no existe; esto es para dar un mensaje claro.
+// Un socio nuevo solo va a un grupo prendido; al editar uno, vale también el grupo que ya tenía.
+// deno-lint-ignore no-explicit-any
+async function grupoSirve(cliente: any, grupo: string, grupoActual: string | null = null): Promise<boolean> {
+  if (!grupo) return false;
+  if (grupo === grupoActual) return true;
+  const { data } = await cliente.from("grupos").select("codigo").eq("codigo", grupo).eq("activo", true).maybeSingle();
+  return !!data;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -96,7 +105,10 @@ Deno.serve(async (req: Request) => {
       if (!id) return json({ error: "Falta el usuario" }, 400);
       if (!nombre || !role) return json({ error: "Faltan datos" }, 400);
       if (!ROLES_VALIDOS.includes(role)) return json({ error: "Rol inválido" }, 400);
-      if (role === "SOCIO" && !GRUPOS_VALIDOS.includes(grupo)) return json({ error: "Un socio debe tener un grupo asignado" }, 400);
+      if (role === "SOCIO") {
+        const { data: actual } = await adminClient.from("profiles").select("grupo").eq("id", id).maybeSingle();
+        if (!(await grupoSirve(adminClient, grupo, actual?.grupo ?? null))) return json({ error: "Un socio debe tener un grupo asignado (uno de Configuración → Grupos)" }, 400);
+      }
 
       if (email) {
         const { error: emailError } = await adminClient.auth.admin.updateUserById(id, { email, email_confirm: true });
@@ -124,7 +136,7 @@ Deno.serve(async (req: Request) => {
 
     if (!nombre || !email || !password || !role) return json({ error: "Faltan datos" }, 400);
     if (!ROLES_VALIDOS.includes(role)) return json({ error: "Rol inválido" }, 400);
-    if (role === "SOCIO" && !GRUPOS_VALIDOS.includes(grupo)) return json({ error: "Un socio debe tener un grupo asignado" }, 400);
+    if (role === "SOCIO" && !(await grupoSirve(adminClient, grupo))) return json({ error: "Un socio debe tener un grupo asignado (uno de Configuración → Grupos)" }, 400);
     if (password.length < 6) return json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400);
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({

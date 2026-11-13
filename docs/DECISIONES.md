@@ -1278,6 +1278,17 @@ De los 127 que pagaron efectivo en la oficina en los últimos 30 días, a 29 les
 **Ojo:** Importación Excel → «Pagos históricos» (solo el dueño) mete efectivo de la oficina: con la 215 corrida, los
 pagos de clientes a los que les falta algo se frenan. No se tocó.
 
+### D-074 · 11-nov-2026 · CAPITAL MOTOS va en violeta, no en naranja
+**Decidió:** el dueño, el 11-nov, al ver el dibujo de la sección Grupos de día y de noche: eligió «Violeta».
+**Por qué:** en el dibujo, el ámbar de PRADERA y el naranja que la D-067 (punto 6) le había dado a CAPITAL MOTOS se
+parecían mucho, sobre todo en las letras de las etiquetas, y los dos grupos salen uno al lado del otro en Caja y en
+Reportes. Además, Caja Diaria y Cobro Diario ya pintaban a USADAS de violeta: es el color con el que la secretaria lo
+reconoce.
+**Qué cambia:** solo el punto 6 de la D-067 para ese grupo. RASTREADOR azul, COSTA verde y PRADERA ámbar no cambian. La
+migración 218 le cambia el color junto con el nombre (USADAS naranja → CAPITAL MOTOS violeta), y el naranja queda libre
+para un grupo nuevo.
+**No toca:** el resto de la D-067 ni lo ya corrido en la 217.
+
 ### D-084 · 11-nov-2026 · Nómina: cada renglón dice por qué, ninguna moto queda por fuera, una visita por entrega y siempre el orden en que pagó el cliente
 **Decidió:** el dueño, al revisar la nómina de CARLOS ARIZA (atrasadas que el cliente «pagó a tiempo» y motos que «ni
 siquiera aparecen», semanas del 12-oct al 2-nov): «Explicar cada renglón · Una visita por cliente · Orden del día en que

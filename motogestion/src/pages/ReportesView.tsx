@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import ImgPrivada from "../components/ImgPrivada";
 import { primaryBtn } from "../styles/shared";
 import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja, calcularCuotaDia } from "../hooks/usePagos";
 import { useContratos, ahorroTotal } from "../hooks/useContratos";
+import { useGrupos } from "../hooks/useGrupos";
 import { useGestiones } from "../hooks/useGestiones";
 import { estadoHoy, cumplimientoDelPeriodo, contratosConPlazoVigente, pctCumplimiento, type Cumplimiento } from "../utils/reportesCifras";
 import { useClientes } from "../hooks/useClientes";
@@ -21,7 +22,7 @@ import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { abrirDocumento, firmarImagenesHtml } from "../lib/storagePrivado";
 import { esDiaDePago, formatDiaPago, valorPeriodoReal, type EstadoCartera } from "../utils/cicloPago";
 import {
-  descargarExcel, GRUPO_HEX,
+  descargarExcel,
   type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
 } from "../utils/exportar";
 import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../components/ModalDescargar";
@@ -88,10 +89,6 @@ const RANGOS: { key: Rango; label: string }[] = [
 const ANG_LABEL: Record<string, string> = {
   delantera: "Delantera", lateral_izquierdo: "Lateral izq.", arriba: "Arriba",
   lateral_derecho: "Lateral der.", trasera: "Trasera", persona: "Persona + moto",
-};
-const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA", "USADAS"] as const;
-const GRUPO_COLORS: Record<string, string> = {
-  RASTREADOR: "var(--accent)", COSTA: "var(--ok2)", PRADERA: "var(--warn2)", USADAS: "var(--orange)",
 };
 
 function getRango(r: Rango): { desde: string; hasta: string } {
@@ -323,7 +320,8 @@ const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && m.est
 /** La cola de trabajo: los que DEBEN primero (los ordenan los días de mora), después la gabela,
  *  las guardadas —que no pueden pagar—, las al día y al final los contratos ya cerrados. */
 const RANK_COLA: Record<EstadoPagoG, number> = { mora: 0, gabela: 1, taller: 2, retenida: 3, aldia: 4, reasignada: 5, cerrado: 6 };
-function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
+// colorDeGrupo y ordenGrupos salen de useGrupos() (mig 217): ya no hay lista escrita a mano.
+function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo", colorDeGrupo: (g: string) => string, ordenGrupos: readonly string[]): BloqueG[] {
   const map = new Map<string, MotoRowG[]>();
   rows.forEach(r => {
     const k = modo === "admin" ? r.adminId : r.grupo;
@@ -347,7 +345,7 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     return {
       key,
       nombre: modo === "admin" ? motos[0].adminNombre : key,
-      color: modo === "grupo" ? (GRUPO_COLORS[key] ?? "var(--muted)") : undefined,
+      color: modo === "grupo" ? colorDeGrupo(key) : undefined,
       // EL MÁS ATRASADO PRIMERO (pedido del dueño, 25-ago): "el primero es el que está en mora
       // hace más días que los demás". Desde el 29-sep los días son los de Cartera (cuota vencida).
       motos: motos.slice().sort((x, y) =>
@@ -366,7 +364,7 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     };
   });
   if (modo === "grupo") {
-    const ord = (g: string) => { const i = (GRUPOS as readonly string[]).indexOf(g); return i === -1 ? 99 : i; };
+    const ord = (g: string) => { const i = ordenGrupos.indexOf(g); return i === -1 ? 99 : i; };
     return bloques.sort((a, b) => ord(a.key) - ord(b.key));
   }
   return bloques.sort((a, b) => (a.key === "__none__" ? 1 : 0) - (b.key === "__none__" ? 1 : 0) || b.recaudado - a.recaudado);
@@ -387,6 +385,11 @@ export default function ReportesView({ onNavigate }: Props) {
   // Al volver de Cartera (o de una ficha), Reportes queda donde estaba: misma pestaña, período,
   // filtros y semana de nómina (pedido del dueño, 5-oct). Dura lo que dure la pestaña del navegador.
   const vista = useMemo(leerVistaReportes, []);
+  // Los grupos prendidos, en orden alfabético; los apagados salen solo donde todavía tengan datos.
+  const { grupos: listaGrupos, tonoDe, hexDe } = useGrupos();
+  const GRUPOS = useMemo(() => listaGrupos.filter(g => g.activo).map(g => g.codigo), [listaGrupos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colorDeGrupo = useCallback((g: string | null | undefined) => tonoDe(g).solido, [listaGrupos]);
   const [rango, setRango] = useState<Rango>(vista?.rango ?? "mes");
   const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => vista?.rangoCustom ?? getRango("ult7")); // rango personalizado de-fecha-a-fecha
   const [tab, setTab]     = useState<Tab>(vista?.tab ?? "resumen");
@@ -852,8 +855,8 @@ export default function ReportesView({ onNavigate }: Props) {
     ...filtros.estado,
   ].join("_").slice(0, 60);
 
-  const porAdminData = useMemo(() => agruparBloques(baseFiltrada, "admin"), [baseFiltrada]);
-  const porGrupoData = useMemo(() => agruparBloques(baseFiltrada, "grupo"), [baseFiltrada]);
+  const porAdminData = useMemo(() => agruparBloques(baseFiltrada, "admin", colorDeGrupo, GRUPOS), [baseFiltrada, colorDeGrupo, GRUPOS]);
+  const porGrupoData = useMemo(() => agruparBloques(baseFiltrada, "grupo", colorDeGrupo, GRUPOS), [baseFiltrada, colorDeGrupo, GRUPOS]);
   // "Motos" = las que están a cargo (sin los contratos ya cerrados, que solo aportan su plata).
   const motosFiltradas = baseFiltrada.filter(r => !fueraDeGestion(r.estado));
   const gTotMotos = motosFiltradas.length;
@@ -928,11 +931,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const matriz = useMemo(() => {
     const admins = [...new Set(baseFiltrada.map(r => r.adminNombre))];
     // Los 4 grupos y, si hubiera plata en otro (sin grupo), también — si no, la matriz no suma el total.
-    const grupos = [...(GRUPOS as readonly string[]).filter(g => baseFiltrada.some(r => r.grupo === g)),
-      ...[...new Set(baseFiltrada.map(r => r.grupo))].filter(g => !(GRUPOS as readonly string[]).includes(g))];
+    const grupos = [...GRUPOS.filter(g => baseFiltrada.some(r => r.grupo === g)),
+      ...[...new Set(baseFiltrada.map(r => r.grupo))].filter(g => !GRUPOS.includes(g))];
     const cell = (nom: string, g: string) => { const rs = baseFiltrada.filter(r => r.adminNombre === nom && r.grupo === g); return { motos: rs.length, rec: rs.reduce((s, r) => s + r.monto, 0) }; };
     return { admins, grupos, cell };
-  }, [baseFiltrada]);
+  }, [baseFiltrada, GRUPOS]);
 
 
   const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
@@ -1426,11 +1429,11 @@ export default function ReportesView({ onNavigate }: Props) {
   // Por grupo: todos los grupos a la vista (para poder cambiar), con el filtro de cobrador puesto.
   const gruposR = useMemo(() => {
     const base = baseGestion.filter(r => filtros.cobrador.length === 0 || filtros.cobrador.includes(r.adminId));
-    const extras = [...new Set(base.map(r => r.grupo))].filter(g => !(GRUPOS as readonly string[]).includes(g));
+    const extras = [...new Set(base.map(r => r.grupo))].filter(g => !GRUPOS.includes(g));
     return [...GRUPOS, ...extras].map(g => {
       const f = base.filter(r => r.grupo === g);
       return {
-        grupo: g, color: GRUPO_COLORS[g] ?? "var(--muted)",
+        grupo: g, color: colorDeGrupo(g),
         recaudo: f.reduce((s, r) => s + r.monto, 0),
         pctCum: pctCumplimiento(f.filter(cuentaParaCumplimiento).map(r => r.cum)),
         enMora: f.filter(r => r.estado === "mora").length,
@@ -1438,8 +1441,8 @@ export default function ReportesView({ onNavigate }: Props) {
         contratosActivos: f.filter(r => r.contratoActivo).length,
         activo: filtros.grupo.length === 1 && filtros.grupo[0] === g,
       };
-    }).filter(x => (GRUPOS as readonly string[]).includes(x.grupo) || x.recaudo > 0);
-  }, [baseGestion, filtros, motos, lugarDeMoto]);
+    }).filter(x => GRUPOS.includes(x.grupo) || x.recaudo > 0);
+  }, [baseGestion, filtros, motos, lugarDeMoto, GRUPOS, colorDeGrupo]);
   // ── POR GRUPO y POR COBRADOR (rediseño 2-oct · D-032/033/034/035) ──
   // Las mismas filas del Resumen, por portafolio. Obedecen a los filtros de la barra; el grupo (o el
   // cobrador) elegido solo decide qué detalle se ve abajo — la lista de arriba los muestra todos. En
@@ -1487,7 +1490,7 @@ export default function ReportesView({ onNavigate }: Props) {
       return {
         clave: k,
         nombre: k === null ? (modo === "grupo" ? "Todos los grupos" : "Todos los cobradores") : nombreDe(k),
-        color: modo === "grupo" ? (k ? (GRUPO_COLORS[k] ?? "var(--muted)") : undefined) : undefined,
+        color: modo === "grupo" ? (k ? (colorDeGrupo(k)) : undefined) : undefined,
         recaudo, anterior: { total: anteriorTotal, delta: deltaRecaudo(recaudo.total, anteriorTotal) },
         antes: (k === null ? pagosAntes : pagosAntes.filter(pg => clavePago(pg) === k)).reduce((sm, pg) => sm + pg.valor, 0),
         cum: {
@@ -1506,7 +1509,7 @@ export default function ReportesView({ onNavigate }: Props) {
       };
     };
     const claves = modo === "grupo"
-      ? [...(GRUPOS as readonly string[]), ...new Set([...motosF.map(grupoMoto), ...filas.map(r => r.grupo)].filter(g => !(GRUPOS as readonly string[]).includes(g)))]
+      ? [...GRUPOS, ...new Set([...motosF.map(grupoMoto), ...filas.map(r => r.grupo)].filter(g => !GRUPOS.includes(g)))]
       : [...new Set([...motosF.map(m => m.subadmin_id ?? "__none__"), ...filas.map(r => r.adminId)])];
     let lista = claves.map(calcular).filter(g => g.totalMotos > 0 || g.recaudo.total > 0);
     // Los cobradores, del que más cumplió al que menos (decisión del 29-sep); las motos sin cobrador al final.
@@ -1522,7 +1525,7 @@ export default function ReportesView({ onNavigate }: Props) {
       filas: enSel(filas, claveFila), motos: enSel(motosF, claveMoto), pagos: enSel(pagosF, clavePago), pagosAntes: enSel(pagosAntes, clavePago),
       gestiones: modo === "cobrador" ? (sel ? gestF.filter(g => g.registrado_por === sel) : gestF) : [],
     };
-  }, [tab, baseGestion, motos, contratoPorId, lugarDeMoto, pagosRango, pagos, atribucion, baseAcuerdoR, filtros, desde, hasta, desdeAnt, hastaAnt, gestiones, subadmins]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, baseGestion, motos, contratoPorId, lugarDeMoto, pagosRango, pagos, atribucion, baseAcuerdoR, filtros, desde, hasta, desdeAnt, hastaAnt, gestiones, subadmins, GRUPOS, colorDeGrupo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirDetallePortafolio(clave: string) {
     const pf = portafolio;
@@ -1643,12 +1646,12 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [flotaF, lugarDeMoto]);
   const gruposFlota = useMemo(() => {
     const base = flotaMotos.filter(m => filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"));
-    const extras = [...new Set(base.map(m => m.grupo ?? "SIN GRUPO"))].filter(g => !(GRUPOS as readonly string[]).includes(g));
-    return [...(GRUPOS as readonly string[]), ...extras].map(g => {
+    const extras = [...new Set(base.map(m => m.grupo ?? "SIN GRUPO"))].filter(g => !GRUPOS.includes(g));
+    return [...GRUPOS, ...extras].map(g => {
       const f = base.filter(m => (m.grupo ?? "SIN GRUPO") === g);
-      return { grupo: g, color: GRUPO_COLORS[g] ?? "var(--muted)", total: f.length, trabajando: f.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length };
+      return { grupo: g, color: colorDeGrupo(g), total: f.length, trabajando: f.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length };
     }).filter(g => g.total > 0);
-  }, [flotaMotos, filtros, lugarDeMoto]);
+  }, [flotaMotos, filtros, lugarDeMoto, GRUPOS, colorDeGrupo]);
   const motoPasaGC = (motoId: string) => { const m = motoPorId.get(motoId); return !!m && pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__"); };
   const alertasF = alertasVencimiento.filter(a => motoPasaGC(a.id));
   const sinSoatFlota = motosSinSoat.filter(m => motoPasaGC(m.id));
@@ -1903,7 +1906,7 @@ export default function ReportesView({ onNavigate }: Props) {
     debe: { total: sumaDebe(debenC), semanas: sumaDebe(vigentesC, "semanas"), acuerdo: sumaDebe(vigentesC, "acuerdo"), deudas: sumaDebe(vigentesC, "deudas"), clientes: debenC.length },
     cobrable: { conMoto: sumaDebe(vigentesC.filter(siguenConContrato)), retenidas: sumaDebe(vigentesC.filter(r => !siguenConContrato(r))) },
     estados: { aldia: cuantosC("aldia"), gabela: cuantosC("gabela"), mora: cuantosC("mora"), recoleccion: vigentesC.filter(r => r.estado === "mora" && r.recoleccion).length, taller: cuantosC("taller"), retenidas: cuantosC("retenida"), liquidacion: cuantosC("reasignada"), rodados: vigentesC.filter(r => rodadoDe(r.contratoId)).length },
-    porGrupo: repartoC(r => r.grupo, r => r.grupo, k => GRUPO_COLORS[k] ?? "var(--muted)"),
+    porGrupo: repartoC(r => r.grupo, r => r.grupo, k => colorDeGrupo(k)),
     porCobrador: repartoC(r => r.adminId, r => r.adminNombre),
     mayores: debenC.slice(0, 5).map(r => ({ contratoId: r.contratoId, placa: r.placa, grupo: r.grupo, cliente: r.cliente, detalle: comoVa(r), debe: r.debeHoy })),
     saldoFavor: { total: vigentesC.reduce((s, r) => s + r.saldoAFavor, 0), clientes: vigentesC.filter(r => r.saldoAFavor > 0).length },
@@ -2046,7 +2049,7 @@ export default function ReportesView({ onNavigate }: Props) {
         + `abonado $${fmt(c.abonado)} · saldo $${fmt(c.saldo)} · `
         + (c.estado === "cumplido" ? "PAGADO" : c.estado === "rodado" ? "RODADO AL FINAL DEL CONTRATO" : c.estado === "incumplido" ? `VENCIDO el ${fmtFechaCorta(c.fechaLimite)}` : c.atrasado > 0 ? `ATRASADO $${fmt(c.atrasado)}` : "al día")
         + ` · ${c.grupo} · ${c.encargado.toUpperCase()}`,
-      color: GRUPO_HEX[c.grupo] ?? "#334155",
+      color: hexDe(c.grupo),
       filas: c.abonos.length === 0
         ? [[{ v: `SIN UN SOLO ABONO desde que se firmó (hace ${c.diasDesdeFirma} días)`, color: "#991b1b", bold: true }, "", "", "", ""]]
         : c.abonos.map(a => [
@@ -2164,7 +2167,7 @@ export default function ReportesView({ onNavigate }: Props) {
     portafolios: (() => {
       const m = new Map<string, number>();
       renglonesN.forEach(({ r }) => m.set(r.grupo, (m.get(r.grupo) ?? 0) + r.valor));
-      return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([grupo, total]) => ({ grupo, total, color: GRUPO_COLORS[grupo] ?? "var(--muted)" }));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([grupo, total]) => ({ grupo, total, color: colorDeGrupo(grupo) }));
     })(),
     tendencia: {
       semanas: semanasTendencia.map((l, i) => ({
@@ -2647,9 +2650,9 @@ export default function ReportesView({ onNavigate }: Props) {
   function bloquesPor<T>(items: T[], grupoDe: (t: T) => string, cobradorDe: (t: T) => string, separar: SepararPor): Array<{ nombre: string; color: string; items: T[] }> {
     const clave = separar === "grupo" ? grupoDe : cobradorDe;
     const nombres = [...new Set(items.map(clave))];
-    const orden = (n: string) => separar === "grupo" ? ((GRUPOS as readonly string[]).indexOf(n) + 1 || 99) : (n === "Sin asignar" || n === "Antes de asignar" ? 99 : 0);
+    const orden = (n: string) => separar === "grupo" ? (GRUPOS.indexOf(n) + 1 || 99) : (n === "Sin asignar" || n === "Antes de asignar" ? 99 : 0);
     nombres.sort((a, b) => orden(a) - orden(b) || a.localeCompare(b));
-    return nombres.map(n => ({ nombre: separar === "grupo" ? n : n.toUpperCase(), color: separar === "grupo" ? (GRUPO_HEX[n] ?? "#334155") : "#334155", items: items.filter(t => clave(t) === n) }));
+    return nombres.map(n => ({ nombre: separar === "grupo" ? n : n.toUpperCase(), color: separar === "grupo" ? hexDe(n) : "#334155", items: items.filter(t => clave(t) === n) }));
   }
   /** SOAT y tecno: va como segunda hoja del Excel de Flota (antes era una descarga aparte). */
   function hojaPapeles(): SeccionesOpts & { nombre: string } {
@@ -2683,7 +2686,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const aFilaC = (r: MotoRowG): FilaCruzado => ({ grupo: r.grupo, cobrador: r.adminId, cerrado: r.estado === "cerrado", debeHoy: r.debeHoy, cum: r.cum, cumSuyo: r.cumSuyo,
     evaluable: r.estado !== "retenida" && r.estado !== "taller" && !fueraDeGestion(r.estado) });
   const aPagoC = (pg: (typeof pagosRango)[number]): PagoCruzado => { const at = atribucion.get(pg.contrato_id)!; return { grupo: at.grupo, cobrador: at.adminId, valor: pg.valor, antesDeAsignar: pagoAntesDeAsignar(pg) }; };
-  const columnasC = (gs: string[]) => [...(GRUPOS as readonly string[]).filter(g => gs.includes(g)), ...[...new Set(gs)].filter(g => !(GRUPOS as readonly string[]).includes(g)).sort()];
+  const columnasC = (gs: string[]) => [...GRUPOS.filter(g => gs.includes(g)), ...[...new Set(gs)].filter(g => !GRUPOS.includes(g)).sort()];
   const motosC = useMemo(() => flotaF.filter(m => !conModalidadC || pasaModC(contratoPorId.get(lugarDeMoto.get(m.id)?.contratoId ?? "")?.forma_pago)), [flotaF, filtros, contratoPorId, lugarDeMoto]); // eslint-disable-line react-hooks/exhaustive-deps
   const filasC = useMemo(() => baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId) && pasaModC(r.formaPago)), [baseGestion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
   const pagosC = useMemo(() => pagosRango.filter(pg => { const at = atribucion.get(pg.contrato_id); return !!at && pasaFiltroGC(at.grupo, at.adminId) && pasaModC(at.formaPago); }), [pagosRango, atribucion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3143,7 +3146,7 @@ export default function ReportesView({ onNavigate }: Props) {
           vistas={VISTAS_CRUZADO.map(v => v.clave)}
           onVista={setVistaCruzado}
           nombre={nombreFilaC}
-          colorGrupo={g => GRUPO_COLORS[g] ?? "var(--muted)"}
+          colorGrupo={g => colorDeGrupo(g)}
           textoPeriodo={textoRango(desde, hasta)}
           onCelda={(cob, g) => abrirCeldaCruzado(cuadroC, cob, g, false)}
           diferencias={diferenciasC(cuadroC, false)}
@@ -3195,7 +3198,7 @@ export default function ReportesView({ onNavigate }: Props) {
               vistas={["motos", "paradas"]}
               onVista={setVistaFlota}
               nombre={nombreFilaC}
-              colorGrupo={g => GRUPO_COLORS[g] ?? "var(--muted)"}
+              colorGrupo={g => colorDeGrupo(g)}
               textoPeriodo={textoRango(desde, hasta)}
               onCelda={(cob, g) => abrirCeldaCruzado(cuadroFlota, cob, g, true)}
               diferencias={diferenciasC(cuadroFlota, true)}
@@ -3270,7 +3273,7 @@ export default function ReportesView({ onNavigate }: Props) {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
               {entregas.map(e => (
-                <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${GRUPO_COLORS[e.grupo] ?? "var(--faint)"}` }}>
+                <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${colorDeGrupo(e.grupo)}` }}>
                   {/* Encabezado */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
                     <button onClick={() => onNavigate?.("ficha_cliente", e.clienteId)} aria-label={`Ver la ficha de ${e.cliente}`}
@@ -3398,7 +3401,7 @@ export default function ReportesView({ onNavigate }: Props) {
               { titulo: "Modalidad", de: m => m.formaPago },
             ]}
             agrupar={m => porAdmin ? m.adminNombre.toUpperCase() : m.grupo}
-            colorSeccion={n => porAdmin ? "#334155" : (GRUPO_HEX[n] ?? "#334155")}
+            colorSeccion={n => porAdmin ? "#334155" : hexDe(n)}
             hojasExtra={hojasOpcionales}
             onCerrar={() => setDescarga(null)}
           />

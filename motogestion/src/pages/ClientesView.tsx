@@ -16,6 +16,7 @@ import { useSubadmins } from "../hooks/useSubadmins";
 import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useGrupos } from "../hooks/useGrupos";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyISO, fmtFechaCorta } from "../utils/fecha";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
@@ -640,6 +641,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const { contratos: todosContratosGrupo } = useContratos();
   const { motos: todasMotosGrupo } = useMotos();
+  const { paraFiltrar: paraFiltrarGrupos } = useGrupos();
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
   const grupoDelCliente = useMemo(() => {
     const map = new Map<string, GrupoMoto>();
@@ -714,7 +716,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     return list;
   }, [clientes, query, filtroEstado, filtroGrupo, grupoDelCliente, fechaVisitaAprobada]);
 
-  const GRUPOS_FILTRO_CLIENTES: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  // Los grupos prendidos y los que todavía tengan motos (mig 217): ya no es una lista escrita a mano.
+  const GRUPOS_FILTRO_CLIENTES: ("todos" | GrupoMoto)[] = ["todos", ...paraFiltrarGrupos(todasMotosGrupo.map(m => m.grupo))];
   function ChipsGrupo() {
     return (
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>

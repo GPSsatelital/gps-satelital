@@ -36,12 +36,7 @@ import Placa from "../components/Placa";
 // garantizado en la BD (RLS), no solo acá.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 
-type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 type Seccion = "inicio" | "entregas" | "flota" | "recaudo";
-
-const GRUPO_NOMBRE: Record<GrupoMoto, string> = {
-  RASTREADOR: "Rastreador", COSTA: "Costa", PRADERA: "Pradera", USADAS: "Usadas Club",
-};
 
 const SECCIONES: Array<{ id: Seccion; label: string }> = [
   { id: "inicio", label: "Inicio" },
@@ -86,7 +81,8 @@ function BotonPagina({ disabled, onClick, children }: { disabled: boolean; onCli
 
 export default function SocioDashboard() {
   const { profile, signOut } = useAuth();
-  const grupo = (profile?.grupo ?? "RASTREADOR") as GrupoMoto;
+  // Sin grupo NO se le muestra RASTREADOR (antes caía ahí): se le avisa, más abajo.
+  const grupo = profile?.grupo ?? "";
 
   const [seccion, setSeccion] = useState<Seccion>("inicio");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -170,6 +166,22 @@ export default function SocioDashboard() {
 
   const ancho = isMobile ? "100%" : 760;
 
+  if (!grupo) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box" }}>
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxSizing: "border-box", textAlign: "left" }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Tu usuario todavía no tiene grupo</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 16 }}>
+            Pídele al administrador que te asigne tu grupo en Configuración → Equipo &amp; Usuarios. Mientras tanto no hay nada que mostrarte.
+          </div>
+          <button onClick={() => signOut()} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--card)", color: "var(--text)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", textAlign: "left" }}>
       {/* Encabezado: quién es, de qué grupo, y que aquí solo se mira */}
@@ -177,7 +189,7 @@ export default function SocioDashboard() {
         <div style={{ maxWidth: ancho, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, letterSpacing: -0.2 }}>Grupo {GRUPO_NOMBRE[grupo]}</div>
+              <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, letterSpacing: -0.2 }}>Grupo {grupo}</div>
               <div style={{ fontSize: 12, opacity: 0.62, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.4 }}>
                 {profile?.nombre} · solo lectura
               </div>

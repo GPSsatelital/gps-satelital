@@ -164,6 +164,15 @@ code {
   --orange: #f97316;
   --orange-ink: #9a3412;
   --orange-soft: #ffedd5;
+  /* Grupos (mig 217): sólido · fondo suave · letra. La base guarda la clave; utils/grupos.ts las usa. */
+  --g-azul: #2563eb; --g-azul-soft: #dbeafe; --g-azul-ink: #1e40af;
+  --g-verde: #16a34a; --g-verde-soft: #dcfce7; --g-verde-ink: #166534;
+  --g-ambar: #d97706; --g-ambar-soft: #fef3c7; --g-ambar-ink: #92400e;
+  --g-naranja: #ea580c; --g-naranja-soft: #ffedd5; --g-naranja-ink: #9a3412;
+  --g-violeta: #7c3aed; --g-violeta-soft: #ede9fe; --g-violeta-ink: #5b21b6;
+  --g-aguamarina: #0d9488; --g-aguamarina-soft: #ccfbf1; --g-aguamarina-ink: #115e59;
+  --g-magenta: #db2777; --g-magenta-soft: #fce7f3; --g-magenta-ink: #9d174d;
+  --g-gris: #64748b; --g-gris-soft: #f1f5f9; --g-gris-ink: #334155;
 }
 
 :root[data-theme="dark"] {
@@ -213,6 +222,14 @@ code {
   --orange: #fb923c;
   --orange-ink: #ffd9b0;
   --orange-soft: #55351a;
+  --g-azul: #60a5fa; --g-azul-soft: #1e3a6e; --g-azul-ink: #c7d7fe;
+  --g-verde: #4ade80; --g-verde-soft: #1c5a3c; --g-verde-ink: #c6facd;
+  --g-ambar: #fbbf24; --g-ambar-soft: #55461b; --g-ambar-ink: #fbe79a;
+  --g-naranja: #fb923c; --g-naranja-soft: #55351a; --g-naranja-ink: #ffd9b0;
+  --g-violeta: #a78bfa; --g-violeta-soft: #3b2a6e; --g-violeta-ink: #ddd6fe;
+  --g-aguamarina: #2dd4bf; --g-aguamarina-soft: #134e4a; --g-aguamarina-ink: #b8f5ea;
+  --g-magenta: #f472b6; --g-magenta-soft: #5a1f3d; --g-magenta-ink: #fcd0e6;
+  --g-gris: #90a4c2; --g-gris-soft: #222f4e; --g-gris-ink: #b0c0d8;
   color-scheme: dark;
 }
 
@@ -314,6 +331,14 @@ button:active:not(:disabled) {
     --warn-soft: #fef3c7; --warn-soft2: #fffbeb; --warn-line: #fde68a;
     --indigo-soft: #e0e7ff; --indigo-ink: #3730a3; --violet: #7c3aed;
     --orange: #f97316; --orange-ink: #9a3412; --orange-soft: #ffedd5;
+    --g-azul: #2563eb; --g-azul-soft: #dbeafe; --g-azul-ink: #1e40af;
+    --g-verde: #16a34a; --g-verde-soft: #dcfce7; --g-verde-ink: #166534;
+    --g-ambar: #d97706; --g-ambar-soft: #fef3c7; --g-ambar-ink: #92400e;
+    --g-naranja: #ea580c; --g-naranja-soft: #ffedd5; --g-naranja-ink: #9a3412;
+    --g-violeta: #7c3aed; --g-violeta-soft: #ede9fe; --g-violeta-ink: #5b21b6;
+    --g-aguamarina: #0d9488; --g-aguamarina-soft: #ccfbf1; --g-aguamarina-ink: #115e59;
+    --g-magenta: #db2777; --g-magenta-soft: #fce7f3; --g-magenta-ink: #9d174d;
+    --g-gris: #64748b; --g-gris-soft: #f1f5f9; --g-gris-ink: #334155;
     color-scheme: light;
   }
   /* Sin destellos al imprimir: papel blanco, tinta negra */

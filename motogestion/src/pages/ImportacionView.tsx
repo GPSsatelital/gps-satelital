@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
+import { useGrupos } from "../hooks/useGrupos";
+import { normalizarNombreGrupo } from "../utils/grupos";
 
 function fmt(n: number) { return n.toLocaleString("es-CO"); }
 
@@ -12,7 +14,7 @@ const CAMPOS_MOTOS = [
   { key: "placa", label: "Placa", req: true },
   { key: "marca", label: "Marca", req: true },
   { key: "modelo", label: "Modelo", req: false },
-  { key: "grupo", label: "Grupo (COSTA/PRADERA/RASTREADOR)", req: true },
+  { key: "grupo", label: "Grupo (uno de Configuración → Grupos)", req: true },
   { key: "color", label: "Color", req: false },
   { key: "numero_motor", label: "N° Motor", req: false },
   { key: "numero_chasis", label: "N° Chasis", req: false },
@@ -36,11 +38,8 @@ const CAMPOS_PAGOS = [
   { key: "estado", label: "Estado (Confirmado / Pendiente)", req: false },
 ];
 
-const GRUPO_MAP: Record<string, string> = {
-  "costa": "COSTA", "pradera": "PRADERA", "rastreador": "RASTREADOR",
-  "COSTA": "COSTA", "PRADERA": "PRADERA", "RASTREADOR": "RASTREADOR",
-  "usadas": "USADAS", "usadas club": "USADAS", "USADAS": "USADAS", "USADAS CLUB": "USADAS",
-};
+// Como se escribía en los Excel viejos. Solo sirve mientras el grupo exista con ese nombre.
+const ALIAS_GRUPO: Record<string, string> = { "USADAS CLUB": "USADAS" };
 
 function parseDate(val: unknown): string | null {
   if (!val) return null;
@@ -94,6 +93,14 @@ export default function ImportacionView() {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [progreso, setProgreso] = useState<{ actual: number; total: number; errores: string[] } | null>(null);
   const [importDone, setImportDone] = useState(false);
+  const { codigosPrendidos } = useGrupos();
+  // El grupo de la fila, escrito como sea (minúsculas, espacios de más), si es uno de los prendidos.
+  // Antes una fila sin grupo entraba como RASTREADOR sin avisar: ahora se rechaza y se dice cuál.
+  function grupoDeFila(r: Record<string, unknown>): string | null {
+    const n = normalizarNombreGrupo(String(r.grupo ?? ""));
+    const codigo = ALIAS_GRUPO[n] ?? n;
+    return codigosPrendidos.includes(codigo) ? codigo : null;
+  }
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 900);
@@ -163,7 +170,8 @@ export default function ImportacionView() {
     if (tipo === "motos") {
       if (!r.placa) return `Fila ${idx + 1}: placa vacía`;
       if (!r.marca) return `Fila ${idx + 1}: marca vacía`;
-      if (r.grupo && !GRUPO_MAP[String(r.grupo)]) return `Fila ${idx + 1}: grupo inválido "${r.grupo}"`;
+      if (!String(r.grupo ?? "").trim()) return `Fila ${idx + 1}: falta el grupo`;
+      if (!grupoDeFila(r)) return `Fila ${idx + 1}: grupo inválido "${r.grupo}" (los que hay: ${codigosPrendidos.join(", ")})`;
     }
     if (tipo === "clientes") {
       if (!r.nombre) return `Fila ${idx + 1}: nombre vacío`;
@@ -192,7 +200,7 @@ export default function ImportacionView() {
         placa: String(r.placa ?? "").toUpperCase().trim(),
         marca: String(r.marca ?? "").trim(),
         modelo: String(r.modelo ?? "").trim() || null,
-        grupo: GRUPO_MAP[String(r.grupo ?? "")] ?? "RASTREADOR",
+        grupo: grupoDeFila(r),
         color: String(r.color ?? "").trim() || null,
         numero_motor: String(r.numero_motor ?? "").trim() || null,
         numero_chasis: String(r.numero_chasis ?? "").trim() || null,

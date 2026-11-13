@@ -32,10 +32,7 @@ const hexNo = (h?: string) => (h || "").replace("#", "");
 const bordeF = { style: "thin", color: { rgb: XLC.line } };
 const bordeAll = { top: bordeF, bottom: bordeF, left: bordeF, right: bordeF };
 
-/** Color de cada portafolio dentro del Excel (hex plano: las variables CSS no sirven en un .xlsx). */
-export const GRUPO_HEX: Record<string, string> = {
-  RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
-};
+// El color de cada portafolio en el Excel ya no vive acá: es `useGrupos().hexDe()` (mig 217).
 
 /** Construye una hoja estilizada a partir de título / período / leyenda / columnas / secciones. */
 export function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {

@@ -110,7 +110,7 @@ Ojo con la moto:
 | `ubicacion_fisica` = `con_cliente` / `bodega` / `oficina` / `taller` / `patios_transito` / `fiscalia` / `otro` | Dónde está físicamente | **Se puede desalinear del estado** (caso IEW64I: `Asignada` + `bodega`). ZALA no debe usarlo para decidir si la moto está con el cliente |
 | `retencion_fecha`, `retencion_numero_caso`, `retencion_detalle` | La retención legal abierta | **Se borran al liberar**: una retención pasada no deja rastro aquí |
 | `subadmin_id` | El encargado de la moto (quién la cobra) | Sin encargado = nadie la persigue |
-| `grupo` = `COSTA` / `PRADERA` / `RASTREADOR` / `USADAS` / `OTRO` | De qué socio es la plata | — |
+| `grupo` = uno de la tabla `grupos` (mig 217, D-067; hoy `COSTA` / `PRADERA` / `RASTREADOR` / `USADAS`, y `OTRO` apagado) | De qué socio es la plata. Es una llave: no se puede guardar un grupo que no esté en la lista | Un grupo apagado no recibe motos nuevas, pero lo que ya tenía se sigue viendo |
 | `condicion_ingreso` = `nueva` / `usada` | — | — |
 | `fecha_seguro`, `fecha_tecnomecanica` | Vencimientos de papeles | — |
 
@@ -351,6 +351,7 @@ ya cocinado y en palabras del negocio. El catálogo columna por columna vive en 
 | `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado (solo pagos desde la firma de ESE acuerdo — mig 132), `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
 | `zala.deudas` | deuda pendiente o en convenio | `que_es` en palabras, `falta`, `estado_texto` |
 | `zala.cuentas_pago` (mig 200) | grupo con cuentas encendidas | `cuentas_texto` (el mismo {cuentas} que arma la app con `textoCuentas()`: un renglón, «A y B»), `cuentas` (banco, tipo, número, titular) y `numeros` (solo dígitos). **Solo las cuentas encendidas** en Configuración → Cuentas bancarias: apagar una la saca al instante. Los `numeros` son de la empresa: la protección de ZALA contra celulares en las variables debe dejarlos pasar (un Nequi es un celular; desde el 15-sep fallaba todo mensaje de cuentas con un solo Nequi). Grupo sin cuentas = no sale (hoy USADAS) |
+| `zala.portafolios` (mig 217) | grupo | `grupo` (el nombre, el mismo de `zala.cliente.grupo` y `zala.cuentas_pago.grupo`) y `activo` (false = apagado: no recibe motos nuevas). La lista la maneja el dueño desde Configuración → Grupos: un grupo nuevo sale acá solo, sin tocar ZALA |
 | `zala.diccionario` | columna | `significado`, `valores`, **`zala_lo_dice`** (sí / no / solo si pregunta / por confirmar), `confirmado_por_dueno` |
 
 **Cómo se calcula:** las funciones `zala.*` son el espejo SQL de `cicloPago.ts` (`loQueDebe`,
@@ -417,7 +418,7 @@ preguntas (§5.6). Esto es lo que se respondió y dónde vive cada cosa. **Regla
 | 7 | Prorrateo | Los días entre la entrega de la moto y su primer día de pago. Se cobra el primer día de pago, día por día (domingo aparte). Solo aplica a contratos nuevos del wizard | `prorrateo_pendiente` |
 | 8 | `empalme_cerrado` (12 de 211) | El visto bueno **del cliente** sobre su saldo migrado: checklist + firma + huella, con él presente. **No es señal de cuentas cuadradas** — la señal es `debe_hoy is not null` (espejo: 322 contratos, 0 diferencias). ZALA puede ignorar esta columna | — |
 | 9 | Motivos de deudas | 12 conceptos, cada uno con **destino** (a qué bolsillo vuelve la plata): socio · socio de la prestada · reembolso a la empresa · ingreso de la empresa | `zala.deudas.que_es`, `destino`; catálogo `zala.conceptos_deuda` |
-| 10 | Los 4 portafolios | COSTA, PRADERA, RASTREADOR (del fundador), USADAS (del club). Cada uno es una inversión independiente con recaudo y reportes aparte. **Cuentas bancarias sí son por grupo** (las de pago salen del grupo de la moto del cliente, nunca de otro). **El encargado NO es por grupo: es por moto** (`subadmin_id`) | `zala.cliente.grupo`, `encargado` |
+| 10 | Los portafolios | Los de `zala.portafolios` (mig 217): hoy COSTA, PRADERA, RASTREADOR (del fundador), USADAS (del club). El dueño crea grupos nuevos desde la app. Cada uno es una inversión independiente con recaudo y reportes aparte. **Cuentas bancarias sí son por grupo** (las de pago salen del grupo de la moto del cliente, nunca de otro). **El encargado NO es por grupo: es por moto** (`subadmin_id`) | `zala.cliente.grupo`, `encargado` |
 | 11 | `ubicacion_fisica` (283 en bodega) | Campo informativo de Motos que **no se actualiza de forma confiable**. Para saber dónde está una moto usar `zala.moto.estado`, `zala.cliente.moto_retenida` y `en_taller_desde` | `zala.moto` |
 | 12 | Liquidaciones "en taller" (21) | Etapa 2 de las 6 de una liquidación (Iniciada → **En taller** → Calculada → Documento → Firmada → Cerrada): la moto se revisa para valorar daños antes de cerrar la cuenta. Es interno; ZALA no interviene | — |
 

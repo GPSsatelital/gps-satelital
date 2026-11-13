@@ -9,7 +9,8 @@ export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimient
 
 /** ¿Sigue en la empresa? Las vendidas no cuentan en la flota ni se ofrecen en ninguna lista. */
 export const enLaEmpresa = (m: { estado?: string | null }) => m.estado !== "Vendida";
-export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS" | "OTRO";
+// Uno de la tabla `grupos` (mig 217): la lista y los colores salen de `useGrupos()`, nunca escritos a mano.
+export type GrupoMoto = string;
 export type CondicionIngreso = "nueva" | "usada";
 
 export type Moto = {

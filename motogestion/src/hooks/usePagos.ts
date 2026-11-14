@@ -559,10 +559,13 @@ export function usePagos() {
     // su decisión, no la regla general.
     let restante = saldo;
     if (!opts?.convenioId) {
+      // Solo 'pendiente': es lo único que el motor baja con reparto explícito. Las 'en_convenio' las cobra su
+      // acuerdo y las 'rodada' no se cobran; contarlas mandaba plata «a la deuda» que no llegaba a ninguna
+      // (YULIETH XZI17H, $28.000 el 5-nov). Mismo criterio que `loQueDebe()`.
       const { data: deudasPend } = await supabase.from("deudas")
         .select("monto_pendiente")
         .eq("contrato_id", contratoId)
-        .neq("estado", "pagada")
+        .eq("estado", "pendiente")
         .gt("monto_pendiente", 0);
       const deudaTotal = (deudasPend ?? []).reduce((s, d) => s + Number(d.monto_pendiente ?? 0), 0);
       const aDeuda = Math.min(saldo, deudaTotal);

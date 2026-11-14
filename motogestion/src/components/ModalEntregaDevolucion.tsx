@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { useContratos } from "../hooks/useContratos";
@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import MoneyInput from "./MoneyInput";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "./FotosAngulos";
-import { papelesMoto, textoBloqueo } from "../utils/papelesMoto";
+import { papelesMoto, textoBloqueo, puedeExceptuarPapeles, faltaParaExceptuar, type RevisionPapeles } from "../utils/papelesMoto";
 import { hoyISO } from "../utils/fecha";
 
 // Formulario de ENTREGA al devolver una moto retenida ya paga. Documenta el estado de
@@ -44,6 +44,24 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
   const [exito, setExito] = useState(false);
   // ¿Devolvió ahora la llave que se había quedado? Solo se pregunta si `seFueConCopia`.
   const [llaveDevuelta, setLlaveDevuelta] = useState<boolean | null>(null);
+  // Papeles vencidos (D-088): solo el ADMIN_PRINCIPAL ve el recuadro para entregarla igual. A los demás
+  // no se les busca nada al abrir: siguen frenados al guardar, como antes.
+  const exceptua = puedeExceptuarPapeles(profile?.role);
+  const [papelesVencidos, setPapelesVencidos] = useState<RevisionPapeles | null>(null);
+  const [motivoExcepcion, setMotivoExcepcion] = useState("");
+  const [aceptaExcepcion, setAceptaExcepcion] = useState(false);
+
+  useEffect(() => {
+    if (!exceptua || !motoId) return;
+    let vigente = true;
+    supabase.from("motos").select("fecha_seguro, fecha_tecnomecanica").eq("id", motoId).single()
+      .then(({ data }) => {
+        if (!vigente || !data) return;
+        const r = papelesMoto(data, hoyISO());
+        setPapelesVencidos(r.puedeEntregar ? null : r);
+      });
+    return () => { vigente = false; };
+  }, [exceptua, motoId]);
 
   async function subirFotos(): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
@@ -75,12 +93,31 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
     try {
       // Sin papeles al día no se entrega (28-oct-2026). Se lee la moto de la base: la fecha pudo
       // corregirse o vencerse desde que se abrió la pantalla.
+      let excepcion: { papeles: string; motivo: string } | null = null;
       if (motoId) {
         const { data: papelesBD, error: errPapeles } = await supabase.from("motos")
           .select("placa, fecha_seguro, fecha_tecnomecanica").eq("id", motoId).single();
         if (errPapeles || !papelesBD) { setError("No se pudo revisar el SOAT y la tecnomecánica de la moto. Revisa la conexión e intenta de nuevo."); return; }
         const rPapeles = papelesMoto(papelesBD, hoyISO());
-        if (!rPapeles.puedeEntregar) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
+        if (!rPapeles.puedeEntregar) {
+          if (!exceptua) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
+          // Se vencieron después de abrir la ventana: el recuadro todavía no estaba a la vista.
+          if (!papelesVencidos) { setPapelesVencidos(rPapeles); setError("Los papeles de la moto están vencidos: llena el recuadro rojo para entregarla como excepción."); return; }
+          const falta = faltaParaExceptuar(motivoExcepcion, aceptaExcepcion);
+          if (falta) { setError(falta); return; }
+          excepcion = { papeles: rPapeles.bloqueos.join(" · "), motivo: motivoExcepcion.trim() };
+        }
+      }
+      // Sin rastro no hay excepción: queda en el historial del contrato antes de soltar la moto.
+      if (excepcion) {
+        const { error: errAud } = await supabase.from("contratos_auditoria").insert({
+          contrato_id: contratoId,
+          campo: "Entrega con papeles vencidos (excepción)",
+          valor_anterior: `${placa}: ${excepcion.papeles}`,
+          valor_nuevo: `Autorizada por ${profile.nombre ?? "el administrador principal"}: ${excepcion.motivo}`,
+          editado_por: profile.id,
+        });
+        if (errAud) { setError("No se pudo dejar el rastro de la excepción: " + errAud.message); return; }
       }
       // 0. La llave que se quedó (mig 122): hay que responder, y si NO la devolvió se confirma en
       //    la cara antes de soltar la moto. No bloquea — quien entrega decide, pero queda escrito.
@@ -106,6 +143,8 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
           fotos: fotosUrls,
           observaciones: `Entrega de moto al cliente tras pago de recuperación.${
             seFueConCopia ? (llaveDevuelta ? " Llave que se había quedado: DEVUELTA en esta entrega." : " Llave que se había quedado: NO devuelta — sigue pendiente.") : ""
+          }${
+            excepcion ? ` Entregada con papeles vencidos (${excepcion.papeles}) por excepción de ${profile.nombre ?? "el administrador principal"}: ${excepcion.motivo}.` : ""
           }${observaciones ? " " + observaciones : ""}`,
           // Rastro en la propia fila (mig 122): true = ya no debe llave · false = sigue pendiente.
           llave_entregada: seFueConCopia ? llaveDevuelta : null,
@@ -146,6 +185,24 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
         <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--ok-soft)", fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>
           Al guardar: se archiva la evidencia de cómo y a quién se devolvió la moto, y el contrato vuelve a Activo.
         </div>
+
+        {papelesVencidos && (
+          <div style={{ padding: "12px 16px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", display: "grid", gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--bad-ink)" }}>📄 Papeles vencidos</div>
+            <div style={{ fontSize: 12, color: "var(--bad-ink)", lineHeight: 1.45 }}>
+              {papelesVencidos.bloqueos.join(" · ")}. Nadie más puede entregarla así: solo tú, como excepción.
+            </div>
+            <div>
+              <div style={{ ...labelStyle, color: "var(--bad-ink)" }}>¿Por qué se entrega así?</div>
+              <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 48 }} value={motivoExcepcion}
+                onChange={e => setMotivoExcepcion(e.target.value)} placeholder="Ej.: el SOAT se compra el lunes; el cliente ya pagó todo" />
+            </div>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, fontWeight: 600, color: "var(--bad-ink)", cursor: "pointer" }}>
+              <input type="checkbox" checked={aceptaExcepcion} onChange={e => setAceptaExcepcion(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span style={{ minWidth: 0 }}>La entrego con los papeles vencidos bajo mi responsabilidad</span>
+            </label>
+          </div>
+        )}
 
         {/* La llave que se quedó (mig 122): en rojo y arriba, antes de las fotos — es lo que se
             olvida. Dos botones, respuesta obligatoria, y si dice que no, se confirma al guardar. */}

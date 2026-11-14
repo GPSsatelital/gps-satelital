@@ -78,3 +78,19 @@ export function resumenPapeles(r: RevisionPapeles): string {
 export function textoBloqueo(placa: string, r: RevisionPapeles): string {
   return `No se puede entregar ${placa}: ${r.bloqueos.join(" · ")}. Actualice la fecha en Motos › ${placa} › Editar.`;
 }
+
+// LA ÚNICA EXCEPCIÓN (dueño, 14-nov-2026, D-088): al DEVOLVER una moto retenida, el ADMIN_PRINCIPAL
+// puede entregarla con los papeles vencidos, escribiendo el motivo y marcando que la entrega bajo
+// su responsabilidad. Contrato nuevo, préstamo de reemplazo y cesión siguen sin excepción.
+export const MOTIVO_EXCEPCION_MINIMO = 10;
+
+export function puedeExceptuarPapeles(rol: string | null | undefined): boolean {
+  return rol === "ADMIN_PRINCIPAL";
+}
+
+/** Qué le falta a la excepción para poder entregar; null si ya está completa. */
+export function faltaParaExceptuar(motivo: string, acepta: boolean): string | null {
+  if (motivo.trim().length < MOTIVO_EXCEPCION_MINIMO) return "Escribe por qué se entrega con los papeles vencidos.";
+  if (!acepta) return "Marca la casilla: la entregas con los papeles vencidos bajo tu responsabilidad.";
+  return null;
+}

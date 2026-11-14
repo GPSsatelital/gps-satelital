@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { papelesMoto, textoBloqueo, DIAS_AVISO } from "./papelesMoto";
+import { papelesMoto, textoBloqueo, DIAS_AVISO, puedeExceptuarPapeles, faltaParaExceptuar } from "./papelesMoto";
 
 // SIN PAPELES AL DÍA NO SE ENTREGA LA MOTO (dueño, 27/28-oct-2026): vencido, sin fecha o mal
 // escrito bloquea y nadie se lo salta; si vence en pocos días, solo avisa.
@@ -72,5 +72,36 @@ describe("cuándo se puede entregar", () => {
     const r = papelesMoto(moto("2026-09-26", "2027-09-26"), HOY);
     expect(textoBloqueo("RMU76H", r)).toBe(
       "No se puede entregar RMU76H: SOAT vencido el 26-sep-2026. Actualice la fecha en Motos › RMU76H › Editar.");
+  });
+});
+
+// La única excepción (dueño, 14-nov-2026, D-088): devolver la retenida con papeles vencidos, solo el
+// ADMIN_PRINCIPAL, con motivo y casilla. Caso que la pidió: ZHO35G (SOAT 27-sep, tecno 16-may).
+describe("la excepción al devolver la moto retenida", () => {
+  it("solo el ADMIN_PRINCIPAL puede exceptuar; nadie más", () => {
+    expect(puedeExceptuarPapeles("ADMIN_PRINCIPAL")).toBe(true);
+    for (const rol of ["ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "", null, undefined]) {
+      expect(puedeExceptuarPapeles(rol)).toBe(false);
+    }
+  });
+
+  it("sin motivo no deja, aunque marque la casilla", () => {
+    expect(faltaParaExceptuar("", true)).toBe("Escribe por qué se entrega con los papeles vencidos.");
+    expect(faltaParaExceptuar("   ok     ", true)).toBe("Escribe por qué se entrega con los papeles vencidos.");
+  });
+
+  it("con motivo pero sin la casilla tampoco", () => {
+    expect(faltaParaExceptuar("El SOAT se compra el lunes", false))
+      .toBe("Marca la casilla: la entregas con los papeles vencidos bajo tu responsabilidad.");
+  });
+
+  it("con motivo y casilla queda completa", () => {
+    expect(faltaParaExceptuar("El SOAT se compra el lunes", true)).toBeNull();
+  });
+
+  it("la excepción no cambia la regla: la moto sigue sin poder entregarse por papeles", () => {
+    const r = papelesMoto(moto("2026-09-27", "2026-05-16"), "2026-11-14");
+    expect(r.puedeEntregar).toBe(false);
+    expect(r.bloqueos).toEqual(["SOAT vencido el 27-sep-2026", "Tecnomecánica vencida el 16-may-2026"]);
   });
 });

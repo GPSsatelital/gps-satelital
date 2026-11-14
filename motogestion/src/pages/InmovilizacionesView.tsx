@@ -24,7 +24,7 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
-import { papelesMoto, textoBloqueo } from "../utils/papelesMoto";
+import { papelesMoto, textoBloqueo, puedeExceptuarPapeles } from "../utils/papelesMoto";
 import { diasTexto } from "../utils/mensajeria";
 import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
 import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
@@ -697,7 +697,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     const motoRet = motos.find(x => x.id === m.motoId);
     if (motoRet) {
       const r = papelesMoto(motoRet, hoyISO());
-      if (!r.puedeEntregar) { alert(textoBloqueo(m.placa, r)); return; }
+      // D-088: al ADMIN_PRINCIPAL no se le frena acá; la ventana le muestra el recuadro rojo de la excepción.
+      if (!r.puedeEntregar && !puedeExceptuarPapeles(profile?.role)) { alert(textoBloqueo(m.placa, r)); return; }
     }
     // Se va a soltar la moto DEBIENDO, amparado en un plazo. Se dice en la cara antes, con la
     // fecha — el que entrega tiene que saber qué está autorizando (misma forma que la temporal).

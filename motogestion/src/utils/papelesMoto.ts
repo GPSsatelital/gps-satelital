@@ -79,14 +79,12 @@ export function textoBloqueo(placa: string, r: RevisionPapeles): string {
   return `No se puede entregar ${placa}: ${r.bloqueos.join(" · ")}. Actualice la fecha en Motos › ${placa} › Editar.`;
 }
 
-// LA ÚNICA EXCEPCIÓN (dueño, 14-nov-2026, D-088): al DEVOLVER una moto retenida, el ADMIN_PRINCIPAL
-// puede entregarla con los papeles vencidos, escribiendo el motivo y marcando que la entrega bajo
-// su responsabilidad. Contrato nuevo, préstamo de reemplazo y cesión siguen sin excepción.
+// LA ÚNICA EXCEPCIÓN (dueño, 14-nov-2026, D-088): al DEVOLVER una moto retenida, quien tenga la acción
+// ACCION_PAPELES_VENCIDOS (el ADMIN_PRINCIPAL siempre; a otro se le prende en Usuarios) puede entregarla
+// con los papeles vencidos, escribiendo el motivo y marcando que la entrega bajo su responsabilidad.
+// Contrato nuevo, préstamo de reemplazo y cesión siguen sin excepción.
+export const ACCION_PAPELES_VENCIDOS = "entregar_papeles_vencidos";
 export const MOTIVO_EXCEPCION_MINIMO = 10;
-
-export function puedeExceptuarPapeles(rol: string | null | undefined): boolean {
-  return rol === "ADMIN_PRINCIPAL";
-}
 
 /** Qué le falta a la excepción para poder entregar; null si ya está completa. */
 export function faltaParaExceptuar(motivo: string, acepta: boolean): string | null {

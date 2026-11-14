@@ -67,6 +67,12 @@ export const ACCIONES: AccionDef[] = [
   // Sergio ya después de la capacitación" → ningún rol lo trae; ADMIN_PRINCIPAL lo tiene por el
   // bypass y a Sergio se le prende desde Usuarios. La base lo exige en las dos funciones (puede_accion).
   { key: "rodar_por_deuda",        label: `Rodar por deuda (más de ${pesos(minimoRodado())})`, modulo: "contratos", dbEnforced: true },
+  // Inmovilizaciones
+  // D-088 (14-nov-2026): devolver la moto retenida con el SOAT o la tecnomecánica vencidos, como
+  // excepción, con motivo y casilla. Ningún rol lo trae: el ADMIN_PRINCIPAL lo tiene por el bypass y a
+  // otra persona se le prende desde Usuarios (el dueño se lo dio a CARLOS ALVAREZ el mismo día). La
+  // regla de papeles vive solo en la pantalla, por eso no hay espejo en `_acciones_default()`.
+  { key: "entregar_papeles_vencidos", label: "Entregar moto retenida con papeles vencidos (excepción)", modulo: "inmovilizaciones" },
   // Motos
   { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
   { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },

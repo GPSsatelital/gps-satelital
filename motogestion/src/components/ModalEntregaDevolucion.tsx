@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import MoneyInput from "./MoneyInput";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "./FotosAngulos";
-import { papelesMoto, textoBloqueo, puedeExceptuarPapeles, faltaParaExceptuar, type RevisionPapeles } from "../utils/papelesMoto";
+import { papelesMoto, textoBloqueo, faltaParaExceptuar, ACCION_PAPELES_VENCIDOS, type RevisionPapeles } from "../utils/papelesMoto";
 import { hoyISO } from "../utils/fecha";
 
 // Formulario de ENTREGA al devolver una moto retenida ya paga. Documenta el estado de
@@ -33,7 +33,7 @@ interface Props {
 export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteNombre, motoId, placa, onClose, onDone, seFueConCopia = false }: Props) {
   const { registrarRecepcion } = useUbicaciones();
   const { reactivarContrato } = useContratos();
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
 
   const [condicion, setCondicion] = useState<"buena" | "regular" | "mala">("buena");
   const [kilometros, setKilometros] = useState("");
@@ -44,9 +44,9 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
   const [exito, setExito] = useState(false);
   // ¿Devolvió ahora la llave que se había quedado? Solo se pregunta si `seFueConCopia`.
   const [llaveDevuelta, setLlaveDevuelta] = useState<boolean | null>(null);
-  // Papeles vencidos (D-088): solo el ADMIN_PRINCIPAL ve el recuadro para entregarla igual. A los demás
-  // no se les busca nada al abrir: siguen frenados al guardar, como antes.
-  const exceptua = puedeExceptuarPapeles(profile?.role);
+  // Papeles vencidos (D-088): solo quien tiene la acción (el ADMIN_PRINCIPAL siempre) ve el recuadro para
+  // entregarla igual. A los demás no se les busca nada al abrir: siguen frenados al guardar, como antes.
+  const exceptua = puede(ACCION_PAPELES_VENCIDOS);
   const [papelesVencidos, setPapelesVencidos] = useState<RevisionPapeles | null>(null);
   const [motivoExcepcion, setMotivoExcepcion] = useState("");
   const [aceptaExcepcion, setAceptaExcepcion] = useState(false);
@@ -108,8 +108,10 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
           excepcion = { papeles: rPapeles.bloqueos.join(" · "), motivo: motivoExcepcion.trim() };
         }
       }
-      // Sin rastro no hay excepción: queda en el historial del contrato antes de soltar la moto.
-      if (excepcion) {
+      // Sin rastro no hay excepción: queda en el historial del contrato antes de soltar la moto. Quien no
+      // puede escribir ese historial (el subadmin no edita contratos) deja el rastro en la nota de la
+      // entrega, que también se escribe antes de reactivar el contrato.
+      if (excepcion && puede("editar_contrato")) {
         const { error: errAud } = await supabase.from("contratos_auditoria").insert({
           contrato_id: contratoId,
           campo: "Entrega con papeles vencidos (excepción)",
@@ -190,7 +192,7 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
           <div style={{ padding: "12px 16px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", display: "grid", gap: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--bad-ink)" }}>📄 Papeles vencidos</div>
             <div style={{ fontSize: 12, color: "var(--bad-ink)", lineHeight: 1.45 }}>
-              {papelesVencidos.bloqueos.join(" · ")}. Nadie más puede entregarla así: solo tú, como excepción.
+              {papelesVencidos.bloqueos.join(" · ")}. Se entrega así solo como excepción, con permiso del administrador principal.
             </div>
             <div>
               <div style={{ ...labelStyle, color: "var(--bad-ink)" }}>¿Por qué se entrega así?</div>

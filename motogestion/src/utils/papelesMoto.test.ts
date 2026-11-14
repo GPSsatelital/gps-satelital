@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { papelesMoto, textoBloqueo, DIAS_AVISO, puedeExceptuarPapeles, faltaParaExceptuar } from "./papelesMoto";
+import { papelesMoto, textoBloqueo, DIAS_AVISO, faltaParaExceptuar, ACCION_PAPELES_VENCIDOS } from "./papelesMoto";
+import { calcularPuede, ACCION_KEYS } from "../lib/acciones";
 
 // SIN PAPELES AL DÍA NO SE ENTREGA LA MOTO (dueño, 27/28-oct-2026): vencido, sin fecha o mal
 // escrito bloquea y nadie se lo salta; si vence en pocos días, solo avisa.
@@ -75,14 +76,24 @@ describe("cuándo se puede entregar", () => {
   });
 });
 
-// La única excepción (dueño, 14-nov-2026, D-088): devolver la retenida con papeles vencidos, solo el
-// ADMIN_PRINCIPAL, con motivo y casilla. Caso que la pidió: ZHO35G (SOAT 27-sep, tecno 16-may).
+// La única excepción (dueño, 14-nov-2026, D-088): devolver la retenida con papeles vencidos, con motivo y
+// casilla. El ADMIN_PRINCIPAL siempre; a otro se le prende en Usuarios (CARLOS ALVAREZ, el mismo día).
+// Caso que la pidió: ZHO35G (SOAT 27-sep, tecno 16-may).
 describe("la excepción al devolver la moto retenida", () => {
-  it("solo el ADMIN_PRINCIPAL puede exceptuar; nadie más", () => {
-    expect(puedeExceptuarPapeles("ADMIN_PRINCIPAL")).toBe(true);
-    for (const rol of ["ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "", null, undefined]) {
-      expect(puedeExceptuarPapeles(rol)).toBe(false);
+  it("la acción existe en Usuarios", () => {
+    expect(ACCION_KEYS).toContain(ACCION_PAPELES_VENCIDOS);
+  });
+
+  it("de entrada solo la tiene el ADMIN_PRINCIPAL; ningún rol la trae", () => {
+    expect(calcularPuede("ADMIN_PRINCIPAL", null, ACCION_PAPELES_VENCIDOS)).toBe(true);
+    for (const rol of ["ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "VISITADOR"] as const) {
+      expect(calcularPuede(rol, null, ACCION_PAPELES_VENCIDOS)).toBe(false);
     }
+  });
+
+  it("prendida a una persona en Usuarios, esa persona sí puede (y se le puede volver a quitar)", () => {
+    expect(calcularPuede("SUBADMIN", { [ACCION_PAPELES_VENCIDOS]: "permitir" }, ACCION_PAPELES_VENCIDOS)).toBe(true);
+    expect(calcularPuede("SUBADMIN", { [ACCION_PAPELES_VENCIDOS]: "bloquear" }, ACCION_PAPELES_VENCIDOS)).toBe(false);
   });
 
   it("sin motivo no deja, aunque marque la casilla", () => {

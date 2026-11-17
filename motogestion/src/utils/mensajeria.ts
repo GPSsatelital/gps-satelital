@@ -17,6 +17,16 @@ export function claveParaBalde(balde: BaldeHoy): ClaveMensaje {
   }
 }
 
+/** La tarjeta donde está el cliente decide su aviso, no solo su estado: el de la tarjeta Recolección
+ *  también está en mora, pero le toca el aviso de recolección (D-092, 17-nov-2026). Hasta ese día el
+ *  botón «Mensaje» miraba solo el estado y a los de Recolección les mandaba el de mora. */
+export function baldeDeContrato(enRecoleccion: boolean, estadoCartera: string): BaldeHoy {
+  if (enRecoleccion) return "recoleccion";
+  if (estadoCartera === "mora") return "mora";
+  if (estadoCartera === "gabela") return "gabela";
+  return "pagan-hoy";
+}
+
 /** Estado real de un mensaje. Los cinco primeros los devuelve ZALA (acuses de Meta); el resto
  *  son de esta app. `abierto_whatsapp` = se abrió WhatsApp en el equipo con el texto listo, pero
  *  nadie sabe si la persona presionó enviar — es el respaldo mientras ZALA no está conectada, y
@@ -228,18 +238,6 @@ export function ordenarVariables(
  *     wa.me — ese es justamente el camino que bloqueó el número.
  *   · Una clave desactivada no sale por ningún lado.
  */
-/** Resumen de una tanda masiva, para decirle a quien la mandó qué pasó con cada grupo. */
-export function resumirTanda(resultados: ResultadoEnvio[]): { salieron: number; enCola: number; fallaron: number; noSalieron: number } {
-  let salieron = 0, enCola = 0, fallaron = 0, noSalieron = 0;
-  for (const r of resultados) {
-    if (r.estado === "enviado" || r.estado === "entregado" || r.estado === "leido") salieron++;
-    else if (r.estado === "en_cola") enCola++;
-    else if (r.estado === "fallo" || r.estado === "sin_conexion") fallaron++;
-    else noSalieron++;   // sin_numero · sin_permiso · sin_plantilla · abierto_whatsapp (no debería pasar en masivo)
-  }
-  return { salieron, enCola, fallaron, noSalieron };
-}
-
 export function decidirCanal(x: {
   zalaActivo: boolean;
   tienePermiso: boolean;

@@ -1389,4 +1389,38 @@ clientes en 7 minutos el lunes 16-nov (6:44–6:51) y a 24 el lunes 9-nov; 62 de
 sábados 8 a. m.–3 p. m., nunca domingos ni festivos); se le pide a ZALA.
 **Dónde vive:** mig 223 (fila `estado_cuenta` en `mensajes_whatsapp` + `zala.diccionario`); `varsEstadoCuenta`,
 `lineaLegible` y `motivoEstadoCuenta` en `utils/mensajeria.ts`; `enviarEstadoCuentaWhatsApp` en `CobrosView.tsx`;
-el mensaje en `docs/PLANTILLAS-WHATSAPP.md` (§ 11). 6 pruebas nuevas.
+el mensaje en `docs/PLANTILLAS-WHATSAPP.md` (§ 11). 6 pruebas nuevas. Publicado el 17-nov (d8d2e67).
+
+### D-091 · 17-nov-2026 · Lo que pide una persona desde MotoGestión sale a cualquier hora (se deja como está)
+**De dónde sale:** al medir los botones de «📋 Para hacer hoy» salió que 255 de 712 «Mensaje» (19-oct → 17-nov) se
+pidieron fuera del horario de la Ley 2300 (224 entre las 5 y las 7 a. m.). Se le preguntó a ZALA qué hacía con ellos.
+ZALA respondió el 17-nov en el contrato ZALA ↔ MotoGestión, que el dueño pegó en la conversación: «Fredy lo decidió
+el 17-nov: se deja como está, sin cambios en su app ni en ZALA».
+**Qué se decidió:**
+1. Lo que pide una persona, de uno en uno, sale en ese momento, a cualquier hora (regla del dueño del 7-nov).
+2. Lo masivo fuera de horario no sale (fallo con el motivo), y ZALA no guarda nada para mandarlo cuando abre el
+   horario, porque un cobro dice «hoy».
+3. El estado de cuenta (D-090) sigue la misma regla: el dueño no pidió limitarlo al horario. Queda cerrado lo que la
+   D-090 dejó «recomendado y sin decidir».
+**Lo que se midió:** de los 255, 246 quedaron `en_cola` y 9 `enviado`. Según ZALA, los `en_cola` son de antes del
+7-nov y casi ninguno salió (de unos 340 desde el 19-oct, menos de 30). **Riesgo que queda a la vista:** la Ley 2300 pone
+el horario a la gestión de cobro, no a la forma de mandarla; la revisión de la ley quedó a medias desde el 3-nov
+(memoria `revision-ley-2300-cobro`).
+
+### D-092 · 17-nov-2026 · «Mensaje» en la tarjeta Recolección manda el aviso de recolección, y se quita el botón de enviar a todos
+**De dónde sale:** al medir «📋 Para hacer hoy» (19-oct → 17-nov) salió que el botón «Mensaje» elegía el aviso solo por
+el estado: a los de la tarjeta Recolección (más de 3 días con la cuota vencida) les mandaba el de mora, 422 de 502 veces.
+El de recolección no salía desde el 11-nov, cuando ZALA apagó su tanda automática (antes lo mandaba ella, ~1.300 veces).
+ZALA confirmó el 17-nov que `aviso_recoleccion_v1` está aprobada por Meta desde septiembre. Y el botón «📨 Enviar
+mensaje a los …» fallaba siempre (29 de 29 el 16-nov): el 11-nov el dueño había dicho «quitemos el boton de enviar
+mensajes masivos, que lo hagan manualmente» y ZALA rechaza todo lo masivo. El dueño aprobó las dos cosas («Sí, las dos»).
+**Qué se decidió:**
+1. «Mensaje» manda el aviso de la tarjeta donde está el cliente: Recolección → `recoleccion`, Mora → `mora`, Gabela →
+   `gabela`, Pagan hoy → `dia_pago`. Es el mismo mapa que `zala.cliente.plantilla_hoy`. Las tres últimas no cambian.
+2. Se quita el botón de enviar a todos, su ventana y la casilla «Enviar mensajes masivos» de Usuarios. Los cobros van
+   uno por uno.
+3. Sigue el cupo de ZALA: un cobro al día por cliente. Si ya le llegó el de mora, el de recolección no sale (y al revés).
+**Qué no se tocó:** Inmovilizaciones (ya mandaba el de recolección); Cobro Diario (manda el de mora: esa pantalla no sabe
+quién está en Recolección y no se usó en 30 días, queda anotado); la vitrina (no hay estado ni cifra nueva).
+**Dónde vive:** `baldeDeContrato` + `claveParaBalde` en `utils/mensajeria.ts` (con sus pruebas); `tareaMensaje` en
+`CobrosView.tsx`. Se borró `components/ModalEnvioMasivo.tsx` y `resumirTanda`.

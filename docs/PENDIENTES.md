@@ -743,13 +743,24 @@ Lo que está afectando cifras reales de clientes en este momento.
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
 - [ ] 💻 📱 **(17-nov) El estado de cuenta por WhatsApp con su propio mensaje (D-090).** El botón «Enviar por
-  WhatsApp» de la ficha falló 121 de 121 veces («falta la plantilla»). Hecho en el código el 17-nov (sin publicar):
-  clave `estado_cuenta`, sus 4 variables y el letrero claro; mig 223 escrita, **sin correr**. Falta, en orden:
-  (1) publicar y que el dueño corra la 223; (2) mandarle a ZALA lo que le toca (está en `PLANTILLAS-WHATSAPP.md` § 11:
+  WhatsApp» de la ficha falló 121 de 121 veces («falta la plantilla»). Publicado el 17-nov (d8d2e67):
+  clave `estado_cuenta`, sus 4 variables y el letrero claro; mig 223 **corrida y comprobada el 17-nov** (una fila,
+  diccionario al día). Falta, en orden: (1) ✅ la 223; (2) mandarle a ZALA lo que le toca (está en `PLANTILLAS-WHATSAPP.md` § 11:
   aceptarlo solo con texto mientras tanto, registrar `estado_cuenta_v1` con el botón, mandar el completo al tocarlo, no
   contarlo como cobro); (3) cuando Meta lo apruebe, prenderlo con una línea (`plantilla_meta = 'estado_cuenta_v1'`).
-  Sin decidir: que el corto salga solo en el horario de la Ley 2300 (recomendado). Hablar con Wilinton: usaba este
+  **ZALA hizo su parte el 17-nov** (a4229c8): si el cliente escribió en 24 h sale el completo; si no, «el cliente no ha
+  escrito en las últimas 24 horas». `estado_cuenta_v1` enviada a Meta el 17-nov 13:32, en revisión; ZALA le avisa al
+  dueño cuando aprueben. Horario: decidido, se deja como está (D-091). Hablar con Wilinton: usaba este
   botón como ronda de cobro (26 clientes en 7 minutos el lunes 16-nov a las 6:44 a. m.).
+- [x] 💻 📱 **(17-nov) «📋 Para hacer hoy»: tres mejoras medidas — las tres cerradas el 17-nov: (a) y (b) publicadas (D-092), (c) D-091** (memoria
+  `mensaje-recoleccion-masivo-horario`). (a) «Mensaje» en la tarjeta Recolección manda el aviso de MORA (422 de 502
+  en 30 días); el de recolección no ha salido desde el 11-nov (antes lo mandaba la tanda de ZALA, ~1.300). **ZALA
+  confirmó el 17-nov que `aviso_recoleccion_v1` está aprobada desde septiembre** → cambiado: el aviso lo decide la tarjeta
+  (`baldeDeContrato` + `claveParaBalde`). Cuidado: un cobro al día por cliente, mora o recolección, no los dos. (b) «📨 Enviar mensaje a los …» falla siempre (masivos apagados en ZALA): solo lo tiene
+  Wilinton por permiso propio → ✅ el dueño se lo apagó en Usuarios el 17-nov (medido: ya nadie fuera del administrador
+  principal lo tiene). (c) 255 de 712 «Mensaje» pedidos fuera del horario de la Ley 2300: preguntarle a ZALA si los
+  guarda hasta la hora → **cerrado: D-091**, el dueño decidió dejarlo como está. El 11-nov el dueño ya había pedido
+  quitar el botón de enviar a todos («que lo hagan manualmente»): se quitaron el botón, su ventana y la casilla «Enviar mensajes masivos» (D-092).
 
 - [ ] 💻 **Cabos sueltos de la primera cuota del acuerdo (D-056, vistos el 26-oct, sin aprobar).**
   `ModalAmpliarConvenio` y la recuperación del motor todavía calculan `fecha_limite` desde HOY, no desde la

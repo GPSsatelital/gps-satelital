@@ -583,11 +583,11 @@ enlace de Mis Visitas (abre el chat con un prospecto, sin texto: no es un mensaj
 |---|---|
 | `mensajes_whatsapp.plantilla_meta` / `variables` / `activa` (mig 133) | La clave conoce su plantilla vigente en Meta y el orden de sus variables. **El código nunca nombra una plantilla.** |
 | `gestiones_cobro.plantilla_usada` … `mensaje_estado` (mig 133) | Qué versión se usó (congelada) y qué pasó de verdad con el mensaje. Estados en `docs/DICCIONARIO-ESTADOS.md` §7b |
-| Acciones `enviar_mensaje` y `enviar_masivo` (`src/lib/acciones.ts`) | Ningún rol las trae por defecto: solo ADMIN_PRINCIPAL, hasta que las reparta por persona en Usuarios |
+| Acción `enviar_mensaje` (`src/lib/acciones.ts`) | Ningún rol la trae por defecto: solo ADMIN_PRINCIPAL, hasta que la reparta por persona en Usuarios. (`enviar_masivo` se quitó el 17-nov junto con el botón, D-092) |
 | Edge Function `enviar-mensaje` | La única puerta hacia ZALA. Guarda la llave del lado del servidor y verifica el permiso con `puede_accion()` en la base |
 | `profiles.whatsapp` (mig 132) + campo en Usuarios | El número de cada funcionario, para que ZALA le reenvíe comprobantes. La lista marca "Sin WhatsApp registrado" |
 | Configuración → Mensajes | Bajo cada texto: a qué plantilla de Meta corresponde y sus variables en orden |
-| **Envío masivo** (Fase 2) — Panel Hoy | El grupo lo definen el chip activo y el buscador. Botón "Enviar mensaje a los N de …" → ventana con nombre · placa · mensaje · valor → confirma → uno por uno por la misma tubería, con resultado por fila. Cada cliente recibe el mensaje de su balde (mismo mapa que `plantilla_hoy`). No repite a quien ya recibió mensaje hoy. Solo con permiso `enviar_masivo` y **solo con el canal oficial conectado** (deshabilitado si no) |
+| ~~**Envío masivo** (Fase 2) — Panel Hoy~~ **Quitado el 17-nov (D-092):** el dueño lo pidió el 11-nov y ZALA rechazaba todo lo masivo. Lo que sigue es cómo era | El grupo lo definen el chip activo y el buscador. Botón "Enviar mensaje a los N de …" → ventana con nombre · placa · mensaje · valor → confirma → uno por uno por la misma tubería, con resultado por fila. Cada cliente recibe el mensaje de su balde (mismo mapa que `plantilla_hoy`). No repite a quien ya recibió mensaje hoy. Solo con permiso `enviar_masivo` y **solo con el canal oficial conectado** (deshabilitado si no) |
 
 **El interruptor:** `VITE_ZALA_ENVIO=on` en el entorno de la app. Mientras no esté, todo sigue
 abriendo WhatsApp como siempre — pero la gestión dice `abierto_whatsapp` ("se abrió WhatsApp; el

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { textoCuentas } from "../hooks/useCuentasBancarias";
-import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda, nombreCorto, faltanEnPalabras, varsEstadoCuenta, lineaLegible, motivoEstadoCuenta } from "./mensajeria";
+import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, baldeDeContrato, nombreCorto, faltanEnPalabras, varsEstadoCuenta, lineaLegible, motivoEstadoCuenta } from "./mensajeria";
 import { MENSAJES_DEFAULT, aplicarComodines } from "../hooks/useMensajesWhatsapp";
 
 describe("nombreCorto — cómo se le habla al cliente (regla del dueño, 8-sep)", () => {
@@ -21,21 +21,20 @@ describe("nombreCorto — cómo se le habla al cliente (regla del dueño, 8-sep)
   });
 });
 
-describe("envío masivo — el balde del panel Hoy decide el mensaje (mismo mapa que zala.cliente.plantilla_hoy)", () => {
-  it("cada chip manda su plantilla", () => {
+describe("«Mensaje» en «📋 Para hacer hoy» — la tarjeta decide el aviso (mismo mapa que zala.cliente.plantilla_hoy)", () => {
+  it("cada tarjeta manda su plantilla", () => {
     expect(claveParaBalde("pagan-hoy")).toBe("dia_pago");
     expect(claveParaBalde("gabela")).toBe("gabela");
     expect(claveParaBalde("mora")).toBe("mora");
     expect(claveParaBalde("recoleccion")).toBe("recoleccion");
   });
-  it("el resumen cuenta bien lo que salió, lo que quedó en cola y lo que falló", () => {
-    const r = resumirTanda([
-      { canal: "zala", estado: "enviado" }, { canal: "zala", estado: "leido" },
-      { canal: "zala", estado: "en_cola" },
-      { canal: "zala", estado: "fallo", motivo: "número sin WhatsApp" }, { canal: "zala", estado: "sin_conexion" },
-      { canal: "ninguno", estado: "sin_numero" },
-    ]);
-    expect(r).toEqual({ salieron: 2, enCola: 1, fallaron: 2, noSalieron: 1 });
+  it("D-092: el de la tarjeta Recolección está en mora, pero le llega el aviso de recolección", () => {
+    expect(claveParaBalde(baldeDeContrato(true, "mora"))).toBe("recoleccion");
+  });
+  it("D-092: las otras tarjetas siguen igual que antes", () => {
+    expect(claveParaBalde(baldeDeContrato(false, "mora"))).toBe("mora");
+    expect(claveParaBalde(baldeDeContrato(false, "gabela"))).toBe("gabela");
+    expect(claveParaBalde(baldeDeContrato(false, "al-dia"))).toBe("dia_pago");
   });
 });
 

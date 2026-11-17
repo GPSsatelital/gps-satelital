@@ -32,8 +32,7 @@ import AvisoEnvio from "../components/AvisoEnvio";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
-import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
-import { claveParaBalde, diasTexto, varsEstadoCuenta, motivoEstadoCuenta, lineaLegible, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
+import { claveParaBalde, baldeDeContrato, diasTexto, varsEstadoCuenta, motivoEstadoCuenta, lineaLegible, type ResultadoEnvio } from "../utils/mensajeria";
 import { useAjustes } from "../hooks/useAjustes";
 import { rastroSaldoFavor } from "../utils/saldoFavor";
 import { rastroDeCubrimiento, fraseDeFechas } from "../utils/cubrimientoPago";
@@ -674,7 +673,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { gestiones, registrarGestion } = useGestiones();
   // Todos los mensajes de esta pantalla salen por la tubería única (plantilla + variables, con
   // rastro real); el render del texto vive adentro de `enviar`.
-  const { enviar, zalaConectada } = useEnvioMensaje();
+  const { enviar } = useEnvioMensaje();
   // El número de la línea oficial, para decirle al funcionario a dónde debe escribir el cliente.
   const { valor: ajuste } = useAjustes();
 
@@ -1193,9 +1192,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (!profile) return;
     const cliente = clientes.find(cl => cl.id === c.cliente_id);
     const moto = motos.find(m => m.id === c.moto_id);
-    // El mensaje cambia según el estado: al día → recordatorio del día de pago,
-    // gabela → aviso de día de gracia, mora → aviso de mora. Plantilla editable en Config.
-    const clave = c.estadoCartera === "mora" ? "mora" : c.estadoCartera === "gabela" ? "gabela" : "dia_pago";
+    // El mensaje lo decide la tarjeta: Recolección → aviso de recolección, Mora → mora, Gabela →
+    // día de gracia, Pagan hoy → día de pago (D-092). Plantilla editable en Config.
+    const clave = claveParaBalde(baldeDeContrato(panelHoy.recoleccion.some(x => x.id === c.id), c.estadoCartera));
     // Una sola tubería para todos los botones de mensaje (useEnvioMensaje): manda plantilla +
     // variables y anota la gestión con el estado REAL. Antes se anotaba "enviado" sin saber si la
     // persona presionó enviar en WhatsApp.
@@ -1368,9 +1367,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [excedenteMonto, setExcedenteMonto] = useState("");
   const [excedenteErr, setExcedenteErr] = useState<string | null>(null);
   const [excedenteProc, setExcedenteProc] = useState(false);
-  // Envío masivo: al principio solo el administrador principal (decisión del dueño, 8-sep); se
-  // reparte por persona desde Usuarios cuando el canal oficial esté probado.
-  const puedeEnviarMasivo = puede("enviar_masivo");
   const puedeCrearConvenio = puede("crear_convenio");
   const puedeRecolectar = puede("recolectar_moto");
   const puedeCobroCampo = esAdmin || esSubadmin;
@@ -1407,7 +1403,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     }
     setFiltroCobradorContratos(partes.cobrador || null);
   }, [initialFilter]);
-  const [envioMasivo, setEnvioMasivo] = useState<{ filas: DestinatarioMasivo[]; titulo: string; omitidos: number } | null>(null);
   const [busquedaHoy, setBusquedaHoy] = useState("");
   // El acuerdo del panel de detalle: activo O incumplido. El incumplido tiene que VERSE —
   // es el que hay que cobrar — y se pinta distinto más abajo (17-sep-2026).
@@ -3581,51 +3576,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               />
             </div>
 
-            {/* ENVÍO MASIVO (Fase 2, 8-sep-2026): el grupo lo definen el chip de arriba y el buscador —
-                no hay casillas por tarjeta a propósito, es lo práctico en el celular. Cada uno recibe
-                el mensaje de SU balde (mismo mapa que zala.cliente.plantilla_hoy). No se repite a
-                quien ya recibió mensaje hoy. Solo con el canal oficial conectado y con el permiso. */}
-            {puedeEnviarMasivo && totalTareasHoy > 0 && (() => {
-              const pendientes = listaOrdenada.filter(c => !gestionHechaHoy(c.id, "mensaje_recordatorio"));
-              const yaHoy = listaOrdenada.length - pendientes.length;
-              const etiqueta = CHIPS_HOY.find(ch => ch.key === filtroHoy)?.label ?? "Todos";
-              const armar = (): DestinatarioMasivo[] => pendientes.map(c => {
-                const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                const moto = motos.find(m => m.id === c.moto_id);
-                const balde = (GRUPOS_HOY.find(g => g.lista.some(x => x.id === c.id))?.key ?? "mora") as BaldeHoy;
-                const nombre = (cliente?.nombre ?? "").toUpperCase();
-                const valorTexto = `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`;
-                return {
-                  contratoId: c.id, nombre, placa: moto?.placa ?? "",
-                  telefono: cliente?.whatsapp || cliente?.telefono,
-                  clave: claveParaBalde(balde),
-                  vars: { nombre, placa: moto?.placa ?? "", ...varsDeDias(c), dia_pago: diaPagoFrase(c), valor: valorTexto },
-                  valorTexto,
-                };
-              });
-              const deshabilitado = !zalaConectada || pendientes.length === 0;
-              return (
-                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => setEnvioMasivo({ filas: armar(), titulo: etiqueta, omitidos: yaHoy })}
-                    disabled={deshabilitado}
-                    title={!zalaConectada
-                      ? "Solo con el canal oficial (ZALA) conectado: por WhatsApp normal no se pueden abrir tantos chats"
-                      : pendientes.length === 0 ? "Todos los de este filtro ya recibieron mensaje hoy" : `Cada uno recibe el mensaje que le toca (${etiqueta})`}
-                    style={{ padding: "9px 14px", borderRadius: 12, border: "none", fontSize: 13, fontWeight: 700,
-                      background: deshabilitado ? "var(--soft)" : "var(--accent-ink)", color: deshabilitado ? "var(--faint)" : "var(--card)",
-                      cursor: deshabilitado ? "not-allowed" : "pointer" }}
-                  >
-                    📨 Enviar mensaje a los {pendientes.length} de {etiqueta}
-                  </button>
-                  {yaHoy > 0 && <span style={{ fontSize: 11, color: "var(--muted)" }}>{yaHoy} ya recibieron mensaje hoy · no se repite</span>}
-                  {!zalaConectada && <span style={{ fontSize: 11, color: "var(--muted)" }}>Canal oficial aún no conectado</span>}
-                </div>
-              );
-            })()}
-            {envioMasivo && (
-              <ModalEnvioMasivo destinatarios={envioMasivo.filas} titulo={envioMasivo.titulo} omitidos={envioMasivo.omitidos} onClose={() => setEnvioMasivo(null)} />
-            )}
+            {/* El botón de enviar a todos se quitó el 17-nov (D-092): el dueño lo había pedido el 11-nov
+                («que lo hagan manualmente») y ZALA rechazaba todo lo masivo. Los cobros van uno por uno. */}
 
             {/* Lista en recuadro con scroll — igual que Contratos */}
             {totalTareasHoy === 0 ? (

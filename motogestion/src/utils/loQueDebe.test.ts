@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loQueDebe, calcularEstadoCartera, cuotaConvenioDelPeriodo, type ContratoCiclo } from "./cicloPago";
+import { loQueDebe, calcularEstadoCartera, cuotaConvenioDelPeriodo, abonadoDesdeLaFirma, type ContratoCiclo } from "./cicloPago";
 
 // "¿Cuánto debe hoy?" — la cuenta que el funcionario le cobra al cliente.
 //
@@ -353,5 +353,59 @@ describe("BRADER — un convenio nuevo arranca en cero, aunque el contrato tenga
     const mismoDia = [...PAGOS_BRADER, { fecha: "2026-09-08", valor: 100000, aplicado_convenio: 100000 }];
     const r = loQueDebe(BRADER, mismoDia, [], CONV_BRADER_2, D("2026-09-16"));
     expect(r.acuerdo?.pagado).toBe(100000);
+  });
+});
+
+// ── OSCAR DAVID PUELLO (DPU39I) — el abono cobrado en campo que el letrero no veía ─────────
+// 17-nov-2026. Acuerdo #1 del 10-sep: $1.749.500 en cuotas de $100.000 desde el 21-sep, con una
+// cuota corrida al final (retención del 9 al 17-oct). El 17-oct Brandon le cobró $620.000 en campo
+// y el motor puso $202.000 en el acuerdo, pero el pago quedó con `convenio_id` vacío. Cartera
+// cobraba bien ($402.000) y a la vez decía «saldo $1.351.500», porque el letrero sumaba solo los
+// pagos marcados con el acuerdo. El saldo real es $1.149.500. Mismo caso en 14 acuerdos activos.
+const OSCAR: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 202000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 104, cajas_pagadas: 32, caja_actual_pagado: 0, cajas_previas: 17,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+  cajas_exoneradas: 1,
+};
+const CONV_OSCAR = {
+  cuota_por_periodo: 100000, deuda_total: 1749500, periodos_exonerados: 1,
+  created_at: "2026-09-10T16:47:39.099665+00:00", cubre_periodo_hasta: "2026-09-21",
+  fecha_primera_cuota: "2026-09-21",
+};
+const ACUERDO_OSCAR = "b6e3e4da-513a-4c71-9edc-6b77e4df86cc";
+// Sus 11 pagos confirmados, tal cual están en la base.
+const PAGOS_OSCAR = [
+  { fecha: "2026-09-10", created_at: "2026-09-10T16:40:00+00:00", valor: 300000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-09-28", created_at: "2026-09-29T14:00:00+00:00", valor: 300000, aplicado_convenio: 98000, convenio_id: ACUERDO_OSCAR },
+  { fecha: "2026-10-17", created_at: "2026-10-17T18:00:00+00:00", valor: 620000, aplicado_convenio: 202000, convenio_id: null },
+  { fecha: "2026-10-21", created_at: "2026-10-23T15:50:00+00:00", valor: 318000, aplicado_convenio: 100000, convenio_id: ACUERDO_OSCAR },
+  { fecha: "2026-10-30", created_at: "2026-10-31T15:06:00+00:00", valor: 160000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-11-01", created_at: "2026-11-04T20:14:00+00:00", valor: 142000, aplicado_convenio: 100000, convenio_id: ACUERDO_OSCAR },
+  { fecha: "2026-11-07", created_at: "2026-11-09T15:04:00+00:00", valor: 202000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-11-09", created_at: "2026-11-10T16:20:00+00:00", valor: 92000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-11-09", created_at: "2026-11-10T16:28:00+00:00", valor: 8000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-11-11", created_at: "2026-11-12T14:44:00+00:00", valor: 102000, aplicado_convenio: 0, convenio_id: null },
+  { fecha: "2026-11-13", created_at: "2026-11-14T15:14:00+00:00", valor: 100000, aplicado_convenio: 100000, convenio_id: ACUERDO_OSCAR },
+];
+
+describe("OSCAR (DPU39I) — lo abonado al acuerdo cuenta aunque el pago no diga a cuál acuerdo va", () => {
+  it("cobro del 17-nov: $402.000 = semana del 16-nov + 2 cuotas del acuerdo", () => {
+    const r = loQueDebe(OSCAR, PAGOS_OSCAR, [], CONV_OSCAR, D("2026-11-17"));
+    expect(r.cuota.falta).toBe(202000);
+    expect(r.acuerdo).toMatchObject({ toca: 800000, pagado: 600000, falta: 200000 });
+    expect(r.totalFalta).toBe(402000);
+  });
+
+  it("🔴 EL DEFECTO: el abono del cobro en campo (sin convenio_id) entra en lo abonado — saldo $1.149.500", () => {
+    const abonado = abonadoDesdeLaFirma(CONV_OSCAR, PAGOS_OSCAR);
+    expect(abonado).toBe(600000);
+    expect(CONV_OSCAR.deuda_total - abonado).toBe(1149500);
+  });
+
+  it("el saldo y el «abonó» del cobro salen de la misma cuenta", () => {
+    const r = loQueDebe(OSCAR, PAGOS_OSCAR, [], CONV_OSCAR, D("2026-11-17"));
+    expect(abonadoDesdeLaFirma(CONV_OSCAR, PAGOS_OSCAR)).toBe(r.acuerdo?.pagado);
   });
 });

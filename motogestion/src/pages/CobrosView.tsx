@@ -99,6 +99,7 @@ import {
   diaPagoFrase,
   vaARecoleccion,
   MOTO_GUARDADA_NO_SE_RECOLECTA,
+  abonadoDesdeLaFirma,
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
@@ -1033,10 +1034,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     return desgloseDebe(c).totalFalta;
   }
 
+  // Lo abonado a un acuerdo se cuenta igual que en el cobro (`abonadoDesdeLaFirma`), no por
+  // `pagos.convenio_id`: el cobro en campo y el saldo a favor lo dejan vacío aunque el motor sí
+  // ponga la plata en el acuerdo. Con el filtro viejo, el «saldo» de la DPU39I decía $1.351.500
+  // cuando eran $1.149.500 (14 acuerdos activos, $1.163.000 de más; 17-nov-2026).
   function sumaAbonadoConvenio(convenioId: string): number {
-    return pagos
-      .filter(p => p.convenio_id === convenioId && p.estado === "Confirmado")
-      .reduce((acc, p) => acc + (p.aplicado_convenio ?? 0), 0);
+    const cv = convenios.find(c => c.id === convenioId);
+    if (!cv) return 0;
+    return abonadoDesdeLaFirma(cv, pagosDelContrato(cv.contrato_id).filter(p => p.estado === "Confirmado"));
   }
 
   // Los que están en la calle: sobre estos se hace la gestión diaria y se cuentan los estados.

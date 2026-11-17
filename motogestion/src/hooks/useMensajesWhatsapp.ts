@@ -13,7 +13,10 @@ export type ClaveMensaje =
   | "dia_pago" | "gabela" | "mora" | "recoleccion" | "recibo" | "cuentas_pago"
   // Nuevas 8-sep-2026 (docs/PLANTILLAS-WHATSAPP.md): antes se mandaban con texto escrito en el
   // código, fuera de esta tabla — Meta jamás los habría aprobado.
-  | "moto_retenida" | "acuse_comprobante" | "recibo_campo" | "contacto_general";
+  | "moto_retenida" | "acuse_comprobante" | "recibo_campo" | "contacto_general"
+  // 17-nov-2026 (D-090): el estado de cuenta tiene su propio mensaje. No es un cobro y ningún otro
+  // mensaje sale en su lugar.
+  | "estado_cuenta";
 
 /** Lo que la base dice de una clave, aparte del texto: qué plantilla de Meta está vigente hoy y en
  *  qué orden van sus variables. `plantilla_meta` null = aún no registrada en Meta (solo texto
@@ -38,6 +41,7 @@ export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: s
   { clave: "recibo_campo", label: "Recibo de cobro en campo", descripcion: "Recibo provisional cuando un funcionario recibe efectivo en la calle: pendiente de validación en caja.", comodines: ["{nombre}", "{placa}", "{valor}", "{folio}", "{fecha}"] },
   { clave: "cuentas_pago", label: "Cuentas para pagar", descripcion: "Le dice al cliente a qué cuentas puede transferir. {cuentas} las inserta solas, según el grupo de SU moto — nunca las de otro portafolio.", comodines: ["{nombre}", "{placa}", "{cuentas}"] },
   { clave: "contacto_general", label: "Contacto general", descripcion: "Desde la campana de alertas: 'le escribimos por un tema de su moto, comuníquese'. Sin detalle variable a propósito — Meta no aprueba un cuerpo que sea una variable.", comodines: ["{nombre}", "{placa}"] },
+  { clave: "estado_cuenta", label: "Estado de cuenta", descripcion: "Botón «Enviar por WhatsApp» de la ficha en Cartera, cuando el cliente pide su estado de cuenta. NO es un cobro. Si el cliente escribió a la línea en las últimas 24 h le llega el estado de cuenta completo; si no, este mensaje corto con el botón «Ver el detalle completo». {valor} es el «Debe hoy» de la ficha.", comodines: ["{nombre}", "{placa}", "{fecha}", "{valor}"] },
 ];
 
 // Texto por defecto — respaldo si la tabla aún no tiene el mensaje. Los que valen son los de la
@@ -53,6 +57,7 @@ export const MENSAJES_DEFAULT: Record<ClaveMensaje, string> = {
   recibo_campo: "Club Moteros Cartagena — recibo provisional de cobro en campo. Recibo {folio} del {fecha}. Cliente {nombre}, moto {placa}. Valor recibido: {valor}. Pendiente de validación en caja; conserve este comprobante.",
   cuentas_pago: "Hola {nombre}, estas son las cuentas donde puede hacer el pago de su moto {placa}:\n\n{cuentas}\n\nCuando transfiera, envíenos la foto del comprobante con el número de referencia para poder acreditarle el pago. Club Moteros Cartagena 🏍️",
   contacto_general: "Hola {nombre}, le escribimos de Club Moteros Cartagena por un tema de su moto {placa}. Por favor comuníquese con nosotros. Club Moteros Cartagena.",
+  estado_cuenta: "📋 Hola, {nombre}. Bendiciones.\nLe compartimos el estado de cuenta de su moto {placa} con corte al {fecha}: hoy le falta por pagar {valor}.\nSi desea ver el detalle completo, toque el botón de abajo.\nQuedamos atentos.",
 };
 
 // Reemplaza los comodines {x} por sus valores reales.

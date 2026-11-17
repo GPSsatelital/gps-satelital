@@ -769,6 +769,14 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 - **Conciliación:** resumen "recogiste hoy $X" en panel Hoy (por persona) + en **Caja Diaria** resumen por funcionario (total, pendiente entregar, sin confirmar).
 - `pagos.tipo_registro="campo"`, `forzarPendiente=true` (queda Pendiente aunque sea efectivo).
 
+### Mensajes al cliente — cada uno para lo suyo (regla del dueño, 17-nov-2026, D-090)
+- **Ningún mensaje sale en lugar de otro.** Si el que corresponde no se puede mandar, se le dice al funcionario
+  por qué; nunca se manda otro «de respaldo» (palabras del dueño: «los mensajes que son para una cosa no se deben
+  mezclar»).
+- **El estado de cuenta no es un cobro:** se manda porque el cliente lo pidió. Va con su propio mensaje
+  (`estado_cuenta`): completo si el cliente escribió a la línea en las últimas 24 h; si no, el corto aprobado en Meta
+  con el botón «Ver el detalle completo». Su `{valor}` es el «Debe hoy» de la ficha (`loQueDebe`).
+
 ### Convenios
 - Máximo 3 por contrato
 - Siempre encima del pago normal — nunca lo reemplaza

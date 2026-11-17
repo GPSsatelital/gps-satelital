@@ -160,6 +160,47 @@ export function textoDelEnvio(nombre: string, r: ResultadoEnvio): {
 }
 
 /**
+ * Los cuatro datos del mensaje corto del estado de cuenta (`estado_cuenta`, D-090). `debeHoy` es el
+ * «Debe hoy» del MISMO objeto con que se arma el estado de cuenta completo: así el mensaje corto y
+ * el largo no pueden decir cifras distintas. Sin placa queda vacío a propósito — Meta no acepta
+ * variables vacías y la tubería avisa «falta la placa» en vez de mandarlo a medias.
+ */
+export function varsEstadoCuenta(x: { nombre: string; placa: string | null | undefined; debeHoy: number; hoyISO: string }): Record<string, string> {
+  return {
+    nombre: x.nombre,
+    placa: x.placa ?? "",
+    // Igual que la fecha del estado de cuenta impreso: "17 de noviembre de 2026".
+    fecha: new Date(x.hoyISO + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }),
+    valor: fmtPesos(x.debeHoy),
+  };
+}
+
+/** "573019058986" → "301 905 8986", como la lee la gente en el aviso impreso de la línea. */
+export function lineaLegible(numero: string | null | undefined): string | null {
+  const d = (numero ?? "").replace(/\D/g, "");
+  const local = d.length === 12 && d.startsWith("57") ? d.slice(2) : d;
+  if (local.length !== 10) return null;
+  return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+}
+
+/**
+ * El estado de cuenta solo sale como texto cuando el cliente le escribió a la línea en las últimas
+ * 24 h (regla del dueño, 8-sep y 17-nov). Si no le escribió, ZALA lo rechaza con un motivo técnico
+ * («falta la plantilla») que el funcionario no entiende: aquí se le dice qué pasó y qué hacer.
+ * Cualquier otro motivo (número, horario…) se muestra tal cual. Solo cambia lo que se lee: la
+ * gestión ya quedó anotada con el motivo original de ZALA.
+ */
+export function motivoEstadoCuenta(r: ResultadoEnvio, linea: string | null): ResultadoEnvio {
+  const porVentana = r.estado === "fallo" && /plantilla|ventana|24 ?h|no ha escrito/i.test(r.motivo ?? "");
+  if (!porVentana) return r;
+  const donde = linea ? `la línea ${linea}` : "la línea oficial";
+  return {
+    ...r,
+    motivo: `No le ha escrito a ${donde} en las últimas 24 horas, y el estado de cuenta solo sale cuando él lo pide. Pídale que le escriba a esa línea y vuelva a tocar el botón.`,
+  };
+}
+
+/**
  * De los comodines con nombre ({nombre}, {valor}…) a la lista posicional de Meta ({{1}}, {{2}}…),
  * en el orden que dice `mensajes_whatsapp.variables` para esa clave. Un comodín que la plantilla
  * pide y no vino llega vacío: Meta rechaza variables vacías, así que el que llama debe mandar

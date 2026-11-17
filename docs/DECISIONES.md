@@ -1363,3 +1363,30 @@ cambiar plata. Ninguna semana estaba cerrada (`nomina_cierres` vacía).
 `faltaDelAcuerdo`, el motivo `acuerdo_cubrio`), `useRodadas.ts` (lee `rodados_por_deuda`) y `ReportesView.tsx`. Sin
 migración. 19 pruebas nuevas y 1 cambiada a propósito (IEW66I: ahora dice que la cerró el acuerdo). ZALA no lee la nómina
 (`docs/DICCIONARIO-ESTADOS.md` → C28). Explicado a cada supervisor en un PDF que no va al repo (lleva clientes).
+
+### D-090 · 17-nov-2026 · El estado de cuenta por WhatsApp tiene su propio mensaje: no es un cobro y ningún otro sale en su lugar
+**Decidió:** el dueño, al ver que el botón «Enviar por WhatsApp» de la ficha (Cartera) fallaba siempre («falta la
+plantilla», 121 de 121 desde septiembre): «eso no es un cobro, es un estado de cuenta y si se le envía es porque el
+cliente contestó y lo pidió» · «los mensajes que son para una cosa no se deben mezclar o que se envíen otros que son
+para otra cosa, eso nunca se podría». Descartó así mandar el aviso de mora o de recolección como respaldo. Eligió el
+mensaje propio con botón («Sí, con botón») y aprobó el texto palabra por palabra.
+**Qué se decidió:**
+1. El estado de cuenta tiene su clave `estado_cuenta` y su plantilla `estado_cuenta_v1` (UTILITY, la registra ZALA en
+   Meta). Texto aprobado: «📋 Hola, {nombre}. Bendiciones. / Le compartimos el estado de cuenta de su moto {placa} con
+   corte al {fecha}: hoy le falta por pagar {valor}. / Si desea ver el detalle completo, toque el botón de abajo. /
+   Quedamos atentos.» con el botón de respuesta rápida «Ver el detalle completo».
+2. Si el cliente le escribió a la línea en las últimas 24 h, le llega el estado de cuenta completo (como se decidió el
+   8-sep). Si no, el corto; al tocar el botón, ZALA le manda el completo.
+3. `{valor}` es el «Debe hoy» de la ficha (`loQueDebe().totalFalta`): sale del mismo objeto que el texto completo, así
+   que los dos no pueden decir cifras distintas. Al día dice $0.
+4. Nunca sale otro mensaje en lugar del estado de cuenta. No cuenta como cobro (no lo frena «ya le llegó un cobro hoy»).
+5. Mientras Meta no lo apruebe, `plantilla_meta` queda vacía: solo sale el completo si el cliente escribió, y si no, el
+   funcionario lee qué hacer («Pídale que le escriba a la línea 301 905 8986 y vuelva a tocar el botón»).
+**Lo que se midió antes de decidir:** los botones con plantilla llegan a ZALA 117 de 132 veces; los 15 restantes los
+frenó ZALA a propósito. El botón del estado de cuenta se usaba también como ronda de cobro: Wilinton lo mandó a 26
+clientes en 7 minutos el lunes 16-nov (6:44–6:51) y a 24 el lunes 9-nov; 62 de 149 envíos entre las 5 y las 8 a. m.
+**Recomendado y sin decidir:** que el corto salga solo en el horario de la Ley 2300 (lunes a viernes 7 a. m.–7 p. m.,
+sábados 8 a. m.–3 p. m., nunca domingos ni festivos); se le pide a ZALA.
+**Dónde vive:** mig 223 (fila `estado_cuenta` en `mensajes_whatsapp` + `zala.diccionario`); `varsEstadoCuenta`,
+`lineaLegible` y `motivoEstadoCuenta` en `utils/mensajeria.ts`; `enviarEstadoCuentaWhatsApp` en `CobrosView.tsx`;
+el mensaje en `docs/PLANTILLAS-WHATSAPP.md` (§ 11). 6 pruebas nuevas.

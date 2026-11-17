@@ -414,6 +414,39 @@ Cuando transfiera, envíenos la foto del comprobante junto con la placa y su nom
 Hola, {nombre}. Bendiciones. Le escribimos de Club Moteros Cartagena por un tema de su moto {placa}. Por favor comuníquese con nosotros por este medio. Quedamos atentos.
 ```
 
+**11 · `estado_cuenta` → `estado_cuenta_v1`** (D-090, 17-nov-2026) · variables: nombre · placa · fecha · valor ·
+**botón de respuesta rápida:** «Ver el detalle completo»
+```
+📋 Hola, {nombre}. Bendiciones.
+Le compartimos el estado de cuenta de su moto {placa} con corte al {fecha}: hoy le falta por pagar {valor}.
+Si desea ver el detalle completo, toque el botón de abajo.
+Quedamos atentos.
+```
+> Texto aprobado por el dueño el 17-nov, palabra por palabra. Ejemplo real de cómo llega: «📋 Hola, Wilmer Yari.
+> Bendiciones. Le compartimos el estado de cuenta de su moto IGC41I con corte al 17 de noviembre de 2026: hoy le
+> falta por pagar $250.000. …». `{fecha}` = la de corte, escrita como en el estado de cuenta impreso; `{valor}` = el
+> «Debe hoy» de la ficha (ya resta lo pagado; al día dice $0).
+>
+> **Reglas del dueño (17-nov):** el estado de cuenta **no es un cobro** («si se le envía es porque el cliente contestó
+> y lo pidió»), y **ningún otro mensaje sale en su lugar** («los mensajes que son para una cosa no se deben mezclar»).
+> Solo lo manda el botón «Enviar por WhatsApp» de la ficha en Cartera; nunca sale de `plantilla_hoy` ni en tanda.
+>
+> **Cómo funciona con ZALA:** MotoGestión manda `clave = estado_cuenta`, las 4 variables y en `texto` el estado de
+> cuenta completo (cuotas, deudas, acuerdo; varias líneas). Si el cliente escribió a la línea en las últimas 24 h,
+> sale `texto`. Si no, sale `estado_cuenta_v1`; cuando el cliente toca «Ver el detalle completo» se abre la ventana y
+> ZALA le manda ese mismo `texto`. `plantilla_meta` queda vacía hasta que ZALA avise que Meta la aprobó (mig 223).
+>
+> **Lo que se le pide a ZALA (17-nov):**
+> 1. Mientras Meta no lo apruebe: aceptar `estado_cuenta` **solo con texto** (sin plantilla). Si el cliente escribió en
+>    las últimas 24 h, mandarlo; si no, responder `estado: "fallo"` con el motivo «el cliente no ha escrito en las
+>    últimas 24 horas» (no un 400). ¿Hoy rechazan todo pedido sin plantilla aunque el cliente haya escrito?
+> 2. Registrar `estado_cuenta_v1` en Meta (UTILITY) con el botón de respuesta rápida «Ver el detalle completo».
+> 3. Cuando el cliente toque el botón, mandarle el `texto` que vino con ese envío.
+> 4. No contarlo como cobro: no lo frena «ya le llegó un cobro hoy».
+> 5. Recomendado (falta la palabra del dueño): que `estado_cuenta_v1` salga solo en el horario de la Ley 2300. El
+>    texto completo, cuando el cliente escribió, puede salir a cualquier hora porque él lo pidió.
+> 6. Avisar cuando Meta lo apruebe: MotoGestión lo prende con una línea (`plantilla_meta = 'estado_cuenta_v1'`).
+
 **Decisión del dueño sobre la firma (8-sep): NO se firma con el nombre del encargado.** Los mensajes
 automáticos hablan como la empresa ("En Club Moteros…", "Quedamos atentos") y se refieren a áreas,
 no a personas. Una persona se presenta con nombre y área **solo cuando toma la conversación** desde

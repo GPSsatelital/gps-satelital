@@ -33,7 +33,8 @@ import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
-import { claveParaBalde, diasTexto, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
+import { claveParaBalde, diasTexto, varsEstadoCuenta, motivoEstadoCuenta, lineaLegible, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
+import { useAjustes } from "../hooks/useAjustes";
 import { rastroSaldoFavor } from "../utils/saldoFavor";
 import { rastroDeCubrimiento, fraseDeFechas } from "../utils/cubrimientoPago";
 import { calendarioDelLibro } from "../utils/libroSemanas";
@@ -673,6 +674,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Todos los mensajes de esta pantalla salen por la tubería única (plantilla + variables, con
   // rastro real); el render del texto vive adentro de `enviar`.
   const { enviar, zalaConectada } = useEnvioMensaje();
+  // El número de la línea oficial, para decirle al funcionario a dónde debe escribir el cliente.
+  const { valor: ajuste } = useAjustes();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
@@ -2151,21 +2154,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       w.print();
     }
 
-    function abrirWhatsApp(texto: string) {
+    // D-090 (17-nov-2026): el estado de cuenta tiene su PROPIO mensaje (`estado_cuenta`). No es un
+    // cobro, y ningún otro mensaje (mora, recolección…) sale en su lugar. Si el cliente escribió a
+    // la línea en las últimas 24 h le llega el texto completo; si no, el corto aprobado en Meta con
+    // el botón «Ver el detalle completo» — mientras Meta no lo apruebe, no sale y se avisa claro.
+    function enviarEstadoCuentaWhatsApp() {
       if (!clienteDetalle) return;
-      // Texto libre: el estado de cuenta cambia por cliente y no puede ser plantilla de Meta. Por
-      // ZALA solo sale dentro de la ventana de 24 h; si está cerrada, ZALA lo dice y aquí se avisa.
+      const d = armarDatosEstadoCuenta();
       void enviar({
         contratoId: contratoDetalle?.id ?? null,
         telefono: clienteDetalle.whatsapp || clienteDetalle.telefono,
-        textoLibre: texto,
+        clave: "estado_cuenta",
+        vars: varsEstadoCuenta({ nombre: clienteDetalle.nombre ?? "", placa: motoDetalle?.placa, debeHoy: d.debeHoy, hoyISO: hoyISO() }),
+        textoLibre: armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, d, incluirAhorroDoc),
         resultado: "Estado de cuenta enviado por WhatsApp",
-      }).then(r => setAvisoEnvio({ nombre: (clienteDetalle.nombre ?? "el cliente").toUpperCase(), r }));
-    }
-
-    function enviarEstadoCuentaWhatsApp() {
-      if (!clienteDetalle) return;
-      abrirWhatsApp(armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc));
+      }).then(r => setAvisoEnvio({
+        nombre: (clienteDetalle.nombre ?? "el cliente").toUpperCase(),
+        r: motivoEstadoCuenta(r, lineaLegible(ajuste("zala_whatsapp"))),
+      }));
     }
 
     // Las cuentas de pago SIEMPRE salen del grupo de SU moto: mandarle las de otro portafolio

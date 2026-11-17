@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { textoCuentas } from "../hooks/useCuentasBancarias";
-import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda, nombreCorto, faltanEnPalabras } from "./mensajeria";
+import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda, nombreCorto, faltanEnPalabras, varsEstadoCuenta, lineaLegible, motivoEstadoCuenta } from "./mensajeria";
+import { MENSAJES_DEFAULT, aplicarComodines } from "../hooks/useMensajesWhatsapp";
 
 describe("nombreCorto — cómo se le habla al cliente (regla del dueño, 8-sep)", () => {
   it("dos primeras palabras, con mayúscula inicial", () => {
@@ -142,5 +143,45 @@ describe("textoCuentas", () => {
 
   it("sin cuentas devuelve vacío en vez de reventar", () => {
     expect(textoCuentas([])).toBe("");
+  });
+});
+
+describe("estado de cuenta por WhatsApp — su propio mensaje (D-090, 17-nov)", () => {
+  it("los cuatro datos: el valor es el «Debe hoy» que recibe, la fecha como en el impreso", () => {
+    const v = varsEstadoCuenta({ nombre: "WILMER YARI RIOS BOSSIO", placa: "IGC41I", debeHoy: 250000, hoyISO: "2026-11-17" });
+    expect(v).toEqual({ nombre: "WILMER YARI RIOS BOSSIO", placa: "IGC41I", fecha: "17 de noviembre de 2026", valor: "$250.000" });
+    // Al día: dice $0, nunca una cuota ya pagada (regla de las cifras).
+    expect(varsEstadoCuenta({ nombre: "X", placa: "ABC12D", debeHoy: 0, hoyISO: "2026-11-17" }).valor).toBe("$0");
+  });
+
+  it("sin placa no se arma: la tubería avisa «falta la placa» en vez de mandarlo a medias", () => {
+    const v = varsEstadoCuenta({ nombre: "X", placa: null, debeHoy: 1000, hoyISO: "2026-11-17" });
+    expect(ordenarVariables(v, ["nombre", "placa", "fecha", "valor"]).faltan).toEqual(["placa"]);
+  });
+
+  it("el texto de respaldo es el aprobado por el dueño, palabra por palabra", () => {
+    const v = varsEstadoCuenta({ nombre: "Wilmer Yari", placa: "IGC41I", debeHoy: 250000, hoyISO: "2026-11-17" });
+    expect(aplicarComodines(MENSAJES_DEFAULT.estado_cuenta, v)).toBe(
+      "📋 Hola, Wilmer Yari. Bendiciones.\nLe compartimos el estado de cuenta de su moto IGC41I con corte al 17 de noviembre de 2026: hoy le falta por pagar $250.000.\nSi desea ver el detalle completo, toque el botón de abajo.\nQuedamos atentos.");
+  });
+
+  it("la línea oficial como la lee la gente", () => {
+    expect(lineaLegible("573019058986")).toBe("301 905 8986");
+    expect(lineaLegible("3019058986")).toBe("301 905 8986");
+    expect(lineaLegible("")).toBeNull();
+    expect(lineaLegible(null)).toBeNull();
+  });
+
+  it("si ZALA lo rechaza porque el cliente no ha escrito, el aviso dice qué hacer", () => {
+    const r = motivoEstadoCuenta({ canal: "zala", estado: "fallo", motivo: "falta la plantilla" }, "301 905 8986");
+    expect(r.motivo).toBe("No le ha escrito a la línea 301 905 8986 en las últimas 24 horas, y el estado de cuenta solo sale cuando él lo pide. Pídale que le escriba a esa línea y vuelva a tocar el botón.");
+    expect(motivoEstadoCuenta({ canal: "zala", estado: "fallo", motivo: "falta la plantilla" }, null).motivo).toContain("la línea oficial");
+  });
+
+  it("cualquier otro resultado se muestra tal cual", () => {
+    const enviado = { canal: "zala" as const, estado: "enviado" as const };
+    expect(motivoEstadoCuenta(enviado, "301 905 8986")).toBe(enviado);
+    const horario = { canal: "zala" as const, estado: "fallo" as const, motivo: "fuera del horario legal de cobro" };
+    expect(motivoEstadoCuenta(horario, "301 905 8986")).toBe(horario);
   });
 });

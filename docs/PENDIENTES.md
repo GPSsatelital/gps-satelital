@@ -41,6 +41,35 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   «Abonó $X esta semana». ✅ (13-nov, D-087) Eran tres casos distintos: a IEW87I la semana la cubrió un acuerdo (ahora
 >   lo dice), y XZI01H e IGC49I sí completaron a tiempo con plata anotada tarde o guardada (ahora salen a tiempo).
 
+> 📊 **(13-nov) Análisis de los supervisores para la reunión del sábado 14-nov: hecho, solo lectura.** Medido del
+> 12-oct al 12-nov con la sesión del dueño: los clientes pagan, pero tarde (de 3 a 4 días), y casi ninguna llamada se
+> anota en la app (salvo LUMAR). Las 6 hojas en PDF quedaron en el Escritorio (llevan nombres de clientes: no se suben).
+> Detalle y método en la memoria `analisis-supervisores-13nov`. Quedó **para que decida el dueño**:
+> - [ ] 🧑 **Filtro por supervisor y por grupo en Cartera** (pedido del 13-nov; solo lo ven ADMIN y ADMIN_PRINCIPAL).
+>   Plan propuesto: una barra arriba con Grupo y Supervisor (la misma de Reportes) que manda sobre los 4 números, los
+>   chips, «Todos» y «Para hacer hoy»; una franja «Viendo solo… · Quitar»; la opción «Sin supervisor»; abre siempre sin
+>   filtro. Ojo: con filtro puesto, el envío masivo de Hoy le manda solo a los filtrados. Falta que el dueño apruebe el
+>   plan para anotarlo en DECISIONES. Se construye después de publicar los grupos (`CobrosView` tiene trabajos sin subir).
+> - [ ] 🧑 **¿Se sostiene la D-077 (recoger con 2 días en mora)?** Medida el 13-nov: la lista del jueves pasaría de unas
+>   63 motos a unas 167 y la del viernes de 51 a 132; el día más pesado pasa del sábado al jueves. Es aproximado: no
+>   aplica la regla de la moto guardada con prestada.
+> - [ ] 🧑 **JOHAN DAVID ROJAS: qué hace.** Es SUBADMIN con 0 motos. Va junto con «Usuario para Johan» (P3).
+> - [ ] 🧑 **Las motos sin supervisor:** 15 retenidas y 2 en taller deben $41.746.000 (foto del 12-nov) y nadie responde
+>   por ellas. Decidir a quién se asignan.
+> - [x] 🧑💻 **La plantilla de WhatsApp que le falta a WILINTON:** 55 mensajes suyos quedaron en `mensaje_estado='fallo'`
+>   con el motivo «falta la plantilla» (12-oct al 12-nov). **Resuelto el 17-nov:** medido, los 120 fallos con ese motivo
+>   salieron del botón «📱 Enviar por WhatsApp» del estado de cuenta (Wilinton 84). Arreglado de nuestro lado con la D-090
+>   (d8d2e67 + mig 223); lo que falta es de ZALA y Meta, anotado en P1.
+
+> 🔍 **(13-nov) LIQ-0103 · VICTOR MANUEL RAMOS · YAL58H: revisada solo leyendo, sin tocar nada.** Sigue en
+> «documento generado», sin firma ni cierre. La cuenta del sistema da **−$655.000** y cuadra al peso con lo guardado
+> y con el papel. Detalle renglón por renglón en la memoria `liquidacion-yal58h-victor`. Quedó **para que decida el dueño**:
+> - [ ] 🧑 **El acuerdo no tiene firma** del cliente ni de su acompañante (desde el empalme: «rehacerlo cuando venga»).
+> - [ ] 🧑 **El empalme sigue abierto:** la deuda de migración se editó a mano ($1.010.000 → $616.000 → $719.000) y
+>   nunca se confirmó con él.
+> - [ ] 💻 **Hasta $52.000 de ahorro suyo, sin confirmar:** las semanas del 1 y del 8 de julio se completaron con el
+>   acuerdo y su ahorro (2 × $26.000) nunca se le acreditó. Confirmarlo con los datos antes de afirmarlo o de corregirlo.
+
 > 🔴 **AL ARRANCAR (7-nov) — EN EL OTRO PC.** El dueño dijo que no se vuelve a trabajar en el PC de la oficina. La
 > mudanza está en `P:\MUDANZA-2026-11-07`: puesta al día y comprobada el 10-nov, con los stickers de la XTZ 250 y el
 > canal de YouTube; la copia final con Claude cerrado la corre el dueño
@@ -100,8 +129,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   deja cerrarse a mano. 13 pruebas nuevas; `tsc`, 1.195 pruebas y build en verde; probado en el navegador a 375 px
 >   (doble clic real: llegó 1 toque y salió 1 mensaje). Falta mirarlo con un mensaje de verdad la primera vez. Se
 >   publica subiendo esos archivos por su nombre, con sus dos pruebas.
-> - **Módulo de grupos o portafolios** (pedido del 7-nov, D-067). **11-nov: la 217 corrida, las pantallas y la sección
->   Grupos hechas y probadas, sin publicar; la 218 escrita, sin correr.** Los grupos se crean, cambian de color, se
+> - **Módulo de grupos o portafolios** (pedido del 7-nov, D-067). **13-nov: PUBLICADO (7a98de7) y la 218 corrida:
+>   USADAS ya es CAPITAL MOTOS, en violeta; `manage-users` publicada.** Falta el grupo nuevo (lo crea el dueño). Los grupos se crean, cambian de color, se
 >   apagan y se encienden desde Configuración, solo el Administrador principal, y USADAS pasa a llamarse CAPITAL MOTOS
 >   (violeta, D-074). Lo que falta, en orden, está en P3.
 
@@ -191,7 +220,20 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   solo descarta las cerradas, así que en esos 4 contratos dice «Liquidación … en curso — va en «anulada»» y esconde
 >   el botón Liquidar. El asistente de contrato (`WizardContrato`) también cuenta las anuladas como abiertas al avisar.
 >   Inmovilizaciones y Liquidaciones ya descartan cerradas y anuladas. Arreglo propuesto: usar esa misma regla.
-> - 🔲 **Sigue: investigar Trello y aplicaciones parecidas** (pedido del 3-nov).
+> - ✅ **Investigar Trello y aplicaciones parecidas** (pedido del 3-nov): hecho, `docs/INVESTIGACION-TRELLO.md`.
+> - 🔨 **11-nov: la pizarra de los supervisores «tipo Trello», propuesta escrita** en `docs/PIZARRA-SUPERVISORES.md`
+>   (sin código). Un papelito por trabajo de hoy, que se corre solo; 4 columnas iguales para todo; tipos con sus pasos;
+>   reloj del día; cerrar el día (D-075: lo pendiente se reporta y el jefe decide pasarlo para mañana o quitarlo).
+>   El dueño escogió: hora límite en naranja, lo urgente arriba, «Prometió pagar» y su pantalla con todos (no «la plata
+>   arriba»). Decididas el 11-nov: **D-076** (cuándo se llama: día de pago basta el mensaje, gabela llamada en la tarde,
+>   mora siempre) y **D-077** (Recolección con 2 días en mora, antes más de 3, para TODO el sistema: pizarra, Cartera
+>   y ZALA; la lista de lugares a cambiar está en la D-077; antes, medir cuántas motos entrarían), **D-078** (domingo sin
+>   cobro; festivo normal), **D-079** (no hay «cubrir a un compañero»), **D-080** (lo pendiente lo decide ADMIN o el
+>   dueño), **D-081** (cierra hasta las 7 p. m. sin permiso), **D-082** (quitar/pasar nunca tocan la deuda) y **D-083**
+>   (arranca un lunes, cuando esté lista). **▶️ Retomar con:** la pregunta sin responder «¿construyo todo menos el mapa
+>   y arranca completa un lunes?» (el dueño preguntó «¿no podemos dejar todo listo enseguida?»); después las
+>   decisiones 9 (hora de la llamada de gabela) y 10 (qué pasa si a las 7 no cerró), medir la D-077 (✅ medida el 13-nov: ver el bloque del 13-nov, arriba), y la lista de
+>   «terminada» antes de escribir código.
 
 > ▶️ **AL ARRANCAR (2-nov) — entró un supervisor nuevo (WILINTON MORA) y se le están pasando motos.**
 > - 🔴 **La nómina le paga cada moto al supervisor que la tiene HOY**: no hay registro de quién la tenía antes. Si una
@@ -498,16 +540,106 @@ Lo que está afectando cifras reales de clientes en este momento.
     (3:59 p.m.); hubo un tercero, la copia del efectivo, que ya se borró el 8-oct y le restó $201.000 de semana
     (y $45.000 del acuerdo). Si pagó UNA vez, sobra la transferencia y hay que rehacer su cuenta; si pagó dos,
     hay que devolverle lo que el borrado le quitó. **No tocar hasta que la oficina diga.**
-  · **ANDRES PEREZ RUIZ (RNN72H), 9-sep:** $200.000 transferencia y 38 segundos después $200.000 efectivo.
-  · **SAMIR LLAMAS (IGJ83I), 1-oct:** dos de $40.000 con 6 segundos de diferencia.
-  · **LUIS ANGEL BERMUDEZ (XZI13H):** dos transferencias de $30.000 seguidas, el 25-ago y el 9-sep (pueden ser reales).
-  · 🆕 (medido 23-oct) **DAVID JOSUE BRAZON (RMU58H), 13-oct:** dos transferencias de $195.000 con la MISMA referencia
-    M13671846, 70 s de diferencia, las dos de ANGELA y confirmadas → casi seguro copia. Desde la mig 203 ya no puede pasar.
-  · 🆕 **JOSUE GRAU (RML59H), 18-ago:** dos efectivos de $202.000 con 67 s (ANGELA).
+  · ✅ (14-nov, contado semana por semana: casi seguro real) **ANDRES PEREZ RUIZ (RNN72H), 9-sep:** $200.000
+    transferencia y 38 segundos después $200.000 efectivo. Paga una semana cada fin de semana, por adelantado: la
+    transferencia (sábado 5-sep) pagó la semana del 7-sep y el efectivo (miércoles 9-sep) la del 14-sep, tres días antes de
+    lo que suele. Después no pagó la del 21 ni la del 28-sep y se le hizo acuerdo. Es efectivo: si la oficina tiene el
+    recibo del 9-sep, queda cerrado.
+  · 🔍 (14-nov: **el único dudoso**) **SAMIR LLAMAS (IGJ83I), 1-oct:** dos efectivos de $40.000 con 6 segundos de
+    diferencia, 13 minutos después de crearse la multa de recolección de ese día. No es el «doble toque» del 8-oct (esas
+    copias caían en el mismo segundo), pero nada explica por qué $80.000 entraron en dos partes iguales. Con los dos quedó
+    todavía atrasado, así que la cuenta no lo delata. **Preguntar a ANGELA o al cliente: ¿el 1-oct pagó $80.000 o $40.000?**
+    Si fueron $40.000, se quita el que NO pagó la multa (c579a39f, 11:20:13) y al cliente le faltan esos $40.000.
+  · ✅ (14-nov: reales) **LUIS ANGEL BERMUDEZ (XZI13H):** dos transferencias de $30.000 seguidas, el 25-ago y el 9-sep.
+    Paga unos $30.000 casi todos los días, y cada transferencia tiene su propio número del banco y su foto (M09248897 y
+    M25360442; M22434628 y M08341212): son pagos distintos.
+  · 🔴 (14-nov: **COPIA CONFIRMADA**) **DAVID JOSUE BRAZON (RMU58H), 13-oct:** dos transferencias de $195.000 con la
+    MISMA referencia M13671846, 70 s de diferencia, las dos de ANGELA y confirmadas, y la foto es el MISMO archivo subido
+    dos veces (mismo tamaño y misma huella). Paga una semana por semana y está al día (58 de 58) con sus pagos de verdad;
+    la copia (5402f292, 10:30 a. m., folio CMP-261013-1030) no llenó semana: dejó **$195.000 de saldo a favor que no
+    existe** y que nadie ha usado todavía. Quitarla: Cartera › 🧾 Historial › «🗑️ Eliminar» (solo ADMIN_PRINCIPAL; deja
+    rastro). Antes: 58/58 y saldo $195.000 · después: 58/58 y saldo $0. Mientras siga, «Aplicar saldo a favor» le
+    pagaría una semana con plata que no entró. Desde la mig 203 ya no puede pasar.
+  · ✅ (14-nov: casi seguro real) **JOSUE GRAU (RML59H), 18-ago:** dos efectivos de $202.000 con 67 s (ANGELA). Ese
+    día debía 3 semanas (3, 10 y 17-ago); los dos efectivos pagaron 2 y aun así quedó atrasado (después mandó $100.000 por
+    transferencia). Una copia lo habría dejado adelantado o con saldo a favor, y no pasó. Contrato ya finalizado.
   · 🆕 **DAVIAN PLAZA:** $350.000 de base por transferencia y $350.000 en efectivo, en DOS fichas de cliente
     («ENRIQUE» y «EMRIQUE»): parece un cliente registrado dos veces.
   ⚠️ **Al borrar una copia, borrar la que NO llenó semana** (la que dice "saldo a favor"): si se borra la otra,
   el motor resta la semana. Y nunca dos copias con el mismo "llenó la semana N": ahí hay que medir antes.
+  · ✅ (14-nov, revisado a fondo: **NO es copia**, el dueño tenía razón) **YESID BARRAZA DIAZ (RLT72H), 30-oct:** la
+    transferencia de $234.000 (ref M04582196, del 26-oct) y el efectivo de $234.000 son DOS semanas distintas. Su
+    contrato es especial ($235.000 la semana; paga $234.000 y aparte $60.000 del acuerdo) y venía atrasado: su pago
+    anterior fue el 15-oct (la semana del 12-oct), así que el 30-oct debía la del 19 y la del 26-oct. Del 27-jul al 26-oct
+    (su semana 65, la última) se le exigieron 14 semanas y hay 14 pagos de $234.000: uno por semana. Hoy debe $102.000
+    ($62.000 de la semana 65 y $40.000 del acuerdo), 19 días en mora, último pago el 30-oct. Lo había marcado por «mismo
+    valor con 65 s de diferencia», y mi cuenta de «llenó semana» sumaba el ahorro dos veces (`aplicado_tarifa` ya trae
+    adentro `aplicado_ahorro`). 🔑 Antes de llamar copia a un par: contar semanas exigidas contra pagos (ARNOL, D-060,
+    también resultó real). Los otros pares desde el 3-nov son dos transferencias con referencias distintas: parecen
+    pagos reales.
+  · 🔑 (14-nov) **Por qué un efectivo repetido no se puede probar desde la app:** la Caja Diaria se cerró solo 10
+    veces, del 29-jul al 13-ago (con el conteo del efectivo y diferencia $0). Desde el 13-ago nadie cuenta en la app el
+    efectivo del día, así que un efectivo anotado dos veces no deja ningún rastro. Mientras no se vuelva a cerrar la caja
+    cada día, cada caso como estos depende del recibo de papel o de la memoria de quien cobró.
+
+- [ ] 🧑💻 🔴 **SUPABASE: LA APP DESCARGA MÁS DATOS DE LOS QUE INCLUYE EL PLAN — PLAZO 10-DIC-2026** (medido el
+  10-nov en Facturación → Uso). Ciclo 14-oct → 14-nov: 308 GB de «salida de datos» (egress) contra 250 GB
+  incluidos en el plan Pro (123 %), unos 10 GB por día. El 62 % es la base de datos (lo que bajan las listas de
+  la app) y el resto, Storage (fotos y documentos); solo hay 11 usuarios. Con el límite de gasto activo no se
+  cobra más, pero si sigue pasándose después del **10-dic** Supabase puede bloquear la app (error 402: nadie
+  podría registrar pagos). Dos salidas: (1) el dueño desactiva el límite de gasto y paga lo que se pase
+  (US$0,09 por GB: unos US$8 al mes a este ritmo); (2) bajar lo que descarga la app (listas que se bajan
+  completas una y otra vez, por ejemplo con cada aviso de tiempo real). Lo sensato es hacer las dos: la
+  primera evita que la app se caiga y la segunda ataca la causa.
+  **🔴 CAUSA MEDIDA el 10-nov (registros de Supabase, 7 días):** casi todo lo de la base lo baja **un programa en
+  Python** (`Python-urllib/3.14`, desde un servidor en Gravelines, Francia; otro `3.12` desde Cartagena) que entra
+  con la cuenta **ASISTENTE DE ANÁLISIS** (rol ANALISTA, `784a07f8…`). Corre las 24 horas, incluso el domingo:
+  unos 15.000 pedidos y **10,5 millones de filas al día**, 7 millones de ellas de `pagos` (la tabla completa
+  unas 1.200 veces al día), más `clientes` completa unas 3.000 veces. Python no pide los datos comprimidos, así
+  que le llegan enteros. Domingo 8-nov: la oficina casi no trabajó (290.000 filas) y la base igual sacó **8,4 GB**;
+  lunes 9-nov, 11,4 GB, de los que el programa se lleva cerca del 87 %. **Sin ese programa** quedan unos 1,4 GB
+  por día de la app y unos 5 GB por día de fotos y documentos en días hábiles: unos 170 GB al mes, por debajo de
+  los 250. Lo de la app (P4, después): no volver a bajar todas las tablas cada vez que se vuelve a la pantalla, y
+  que los comprobantes no se descarguen de nuevo cada vez (hoy un usuario abrió 68 comprobantes 801 veces).
+  ⚠️ El programa también se lleva, cada minuto, los datos personales de los 465 clientes a un servidor de afuera.
+  **Es ZALA** (confirmado el 10-nov leyendo su código, sin tocarlo): el servidor de Francia es el de ZALA (OVH,
+  desde el 21-oct) y se conectó con la cuenta de análisis por recomendación nuestra. En `servidor-zala.py` un hilo
+  (`rueda()`) rehace cada 60 segundos la cuenta de cobros (`cobros.pendientes()`): baja contratos, clientes,
+  5.000 pagos, deudas y convenios, día y noche, sin comprimir. El arreglo va en el proyecto de ZALA, no acá.
+  **Plan aprobado el 10-nov (D-073):** (1) ya: cada 30 min y solo de 6 a. m. a 9 p. m.; (2) esta semana: la cuenta de
+  cobros de ZALA lee `zala.cliente`. Se le pasó la nota a la sesión de ZALA. **Falta acá:** medir en Supabase → Logs
+  (mismas consultas del 10-nov) que los pedidos de la cuenta de análisis bajaron, un día después de cada paso.
+  **14-nov (medido en Facturación, solo leyendo):** el ciclo 14-oct → 14-nov cerró en **319,7 GB**. Desde el 11-nov
+  bajó a unos 2 a 2,5 GB por día (antes, unos 10). El ciclo nuevo (14-nov → 14-dic) iba en 0,56 GB a las 15 horas:
+  a ese ritmo cierra muy por debajo de 250 y no se bloquea el 10-dic. ✅ **La factura CASWTC-00007 del 13-nov
+  (US$25, el plan Pro) la pagó el dueño el 14-nov** (estaba sin pagar y Supabase avisaba que podía cortar; la tarjeta
+  terminada en 0698 ya está puesta; las de septiembre y octubre sí se pagaron). Falta: confirmar en Logs que la baja
+  es la cuenta de análisis (ZALA).
+- [ ] 💻 🔴 **«APLICAR SALDO A FAVOR» SE TRAGA LA PLATA SI LA ÚNICA DEUDA ESTÁ DENTRO DE UN ACUERDO** (medido el
+  10-nov, al preparar la liquidación de JAIDER FERRER, YAC80H). `aplicarSaldoFavor()` (`usePagos.ts`) busca deudas
+  con `estado <> 'pagada'`, así que cuenta las `en_convenio`; manda el saldo «a la deuda» con reparto explícito,
+  pero la base solo baja las `pendiente`. El saldo sale del cliente y no entra a ninguna parte. A JAIDER le pasó
+  con $500 el 28-oct. Barrida: de 43 movimientos de saldo a deuda (41 contratos), 6 contratos tienen más plata
+  mandada a deudas que lo que sus deudas bajaron, todos con una deuda dentro de un acuerdo: cf28defc $98.000 ·
+  217f06f6 $40.500 · 5b2f4f0d $30.000 · 961b0e5c $28.000 · e40b4562 $5.000 (4 de ellos tienen deudas editadas a
+  mano, que también descuadran: revisar uno por uno). Falta: arreglar el filtro (solo `pendiente`) con su prueba,
+  y decidir con el dueño qué se les devuelve.
+  **14-nov:** sin casos nuevos desde el 10-nov, pero el filtro sigue igual (`usePagos.ts:565`, `.neq("estado",
+  "pagada")`). Hoy 11 contratos activos o suspendidos tienen saldo a favor y solo deudas dentro de un acuerdo: si se
+  usa el botón un día en que deben, se pierden hasta unos $779.000 (DPU50I $246.000 · YAL63H $202.000 · RMY52H
+  $100.000 · RMW28H $85.000 · RLT87H $42.000 · IGC43I $30.000 · ZIB64G $28.000 · IEW55I $20.000 · RMY93H $10.000 ·
+  IEW63I $9.000 · RLZ95H $7.000). Posible caso más: RMM66H, $15.000 el 2-sep sin ninguna deuda anterior (confirmar).
+  ✅ **14-nov: el botón ARREGLADO y PUBLICADO (d6c57bb, con permiso del dueño):** cuenta solo las deudas `pendiente`,
+  igual que `loQueDebe()`; prueba nueva `aplicarSaldoFavor.test.ts` (7 casos, 3 fallaban antes). **Falta:** (1) decidir
+  con el dueño qué se les devuelve a los 5 de la barrida del 10-nov (y confirmar RMM66H); (2) el candado en la BASE:
+  que el motor devuelva a saldo a favor lo que un reparto explícito mande a deudas y no pueda bajar.
+- [ ] 🔍 **16 DEUDAS «DENTRO DEL ACUERDO» CON EL ACUERDO YA PAGADO** (medido el 10-nov): siguen `en_convenio` con
+  $3.611.000 pendientes aunque su acuerdo está `cumplido`. No le cobran a nadie (Cartera, Cobro Diario y la
+  liquidación solo cuentan las `pendiente`), pero la ficha las muestra como pendientes y son las que dejan la puerta
+  de arriba abierta. Además, el motor llegó a abonarle directo a una de ellas (JAIDER, $8.000 el 13-sep), que el
+  acuerdo ya cubría: revisar si les pasó a más.
+  **14-nov:** siguen 16, ahora $3.620.000. De 36 acuerdos cumplidos que tienen deudas, 21 las dejaron pagadas y 15
+  no; no depende de la partitura (7 la tienen y 8 no). Falta encontrar qué las cierra en un caso y no en el otro.
 
 - [ ] 💻 🔴 **TIEMPO GUARDADO RODADO DOS VECES (medido el 9-oct, al armar el libro de semanas).** En
   `acuerdos_tiempo_rodado` hay 8 decisiones registradas 2 o 3 veces con segundos/minutos de diferencia
@@ -761,6 +893,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   principal lo tiene). (c) 255 de 712 «Mensaje» pedidos fuera del horario de la Ley 2300: preguntarle a ZALA si los
   guarda hasta la hora → **cerrado: D-091**, el dueño decidió dejarlo como está. El 11-nov el dueño ya había pedido
   quitar el botón de enviar a todos («que lo hagan manualmente»): se quitaron el botón, su ventana y la casilla «Enviar mensajes masivos» (D-092).
+
+- [ ] 💻 🔑 **(14-nov) Quitarle a CARLOS ALVAREZ el permiso «Entregar moto retenida con papeles vencidos» y construir la
+  autorización a distancia (D-089).** Se le prendió en Usuarios para entregar la ZHO35G con el cliente esperando; el dueño
+  dijo «ya después lo arreglamos». Lo aprobado: el administrador principal autoriza desde su celular, una vez por moto,
+  solo ese día, la puede usar cualquiera que entregue esa moto y se puede cancelar (tabla nueva con candado en la base).
 
 - [ ] 💻 **Cabos sueltos de la primera cuota del acuerdo (D-056, vistos el 26-oct, sin aprobar).**
   `ModalAmpliarConvenio` y la recuperación del motor todavía calculan `fecha_limite` desde HOY, no desde la
@@ -1183,6 +1320,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 🧑 **ZALA:** que Meta apruebe las 10 plantillas · *(la llave subió a P0)* ·
   formato de la plata.
+  *(13-nov: a WILINTON le fallaron 55 mensajes por «falta la plantilla»; ver el bloque del 13-nov.)*
 
 - [ ] 🧑 **Probar con gente real:** Mi Día con un SUBADMIN · los avisos push en un Android ·
   el rol ANALISTA · el portal del SOCIO · los pasos 3 a 6 del wizard en una entrega de verdad.
@@ -1220,6 +1358,41 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P3 — Módulos por construir
+
+- [ ] 💻 **«EVALUACIÓN» SEMANAL DE SUPERVISORES DENTRO DE LA APP** (pedido del dueño el 18-nov: «que se pueda sacar
+  semana a semana desde la app», «igual a ese y que podamos seguirlo mejorando»). Es el
+  PDF del 18-nov (`Club Moteros - Documentos › 2 Supervisores › 2026-11-18 Resumen evaluacion de cartera`) hecho
+  pantalla: Reportes → Equipo → «Evaluación», con la cuenta en la base (una función por lunes, mig 224) leyendo las
+  fotos de `cartera_del_dia`. Propuesta, dibujo, lista de «terminado» y decisiones en la memoria
+  `resumen-evaluacion-supervisores-18nov`. Ya decidido: la ven solo ADMIN_PRINCIPAL y ADMIN (D-093, también en la
+  base); sus cifras no van al diccionario de ZALA; «por confirmar» solo en la semana en curso.
+  🔨 **18-nov: la mig 224 (`evaluacion_semanas()` + `evaluacion_semana(lunes)`) escrita y CORRIDA** por el dueño
+  (verificación: 2 filas, las dos con `true`); el archivo sin commit. **Sigue:** (2) llamar la función desde la app
+  con la sesión del dueño para las semanas del 9 y del 2 de noviembre y compararla contra el PDF hasta que cuadre al
+  peso · (3) la pantalla · (4) tsc + build + test + 375 px. No publicar hasta que el dueño diga.
+  Después, en un paso aparte: anotar en `pagos` la hora de cada confirmación.
+
+### Lista del dueño del 10-nov (se hacen junto con los demás pendientes, después de la liquidación de la YAC80H)
+
+- [ ] 💻 **Confirmar dónde duerme la moto: que le salga a quien HIZO la visita.** Pasa que una persona hace la visita
+  y la visita está asignada a otra; la que fue no puede confirmar dónde duerme la moto. Hay que revisar en el código
+  quién puede confirmar hoy (`visitas.asignada_a` contra `visitas.realizada_por`). ⚠️ **Por definir:** ¿la ven las
+  dos personas, o solo la que la hizo?
+- [ ] 🧑💻 **Usuario para Johan con accesos y vistas especiales.** Hay que definirlo en una sesión antes de crearlo:
+  qué ve, qué puede hacer y qué rol le corresponde, o si hace falta uno nuevo. *(13-nov: sigue con 0 motos;
+  primero decidir qué hace, ver el bloque del 13-nov arriba.)*
+- [ ] 💻 **El formato de «los más buscados».** Una lista de los más buscados, o sea, a quiénes hay que hacerles
+  alguna gestión. ⚠️ **Por definir:** ¿es un papel para imprimir o una pantalla? ¿Quién entra a la lista (mora,
+  recolección, moto sin ubicar) y qué datos lleva cada uno?
+- [ ] 💻 **Adjuntar el documento de ingreso y de salida de garantía.** Cuando la moto entra o sale de garantía, que se
+  pueda subir el papel. ⚠️ **Por definir:** ¿dónde se adjunta (la retención de la moto, la orden de taller) y quién
+  lo sube?
+- [ ] 💻 **Valor de la multa por inmovilización editable.** Hoy es fija en $30.000 (`MULTA_RECOLECCION` en
+  `utils/inmovilizacion.ts`). Es la misma «multa cuando hay que salir de la ciudad» de las decisiones sueltas de P2.
+  ⚠️ **Por definir:** ¿quién la puede cambiar, y si se pide el motivo?
+- [ ] 💻 **El documento de recibido y de entrega de la moto** (cuando se recibe y cuando se vuelve a entregar). Es el
+  **acta de entrega y recibo (D-066)**, que ya está construida hasta la fase 5 y sin publicar: ver el bloque de
+  arriba («AL ARRANCAR») y la memoria `acta-entrega-recibo`. Falta la fase 6, que la revise un abogado y publicarla.
 
 - [ ] 💻 📋 **EGRESOS, con detalles y evidencias** — diseñado, sin construir. Hoy la plata que SALE
   no se registra en ningún lado (se vio con ELKIN: no había forma de saber si se le entregó su
@@ -1287,10 +1460,16 @@ Lo que está afectando cifras reales de clientes en este momento.
     La app ya no escoge RASTREADOR sola (moto nueva, socio, Excel, panel del socio). `manage-users` lee los grupos de
     la tabla (sin publicar). `tsc` limpio, 1.210 pruebas y build bien. Probado en el navegador a 375 px, de día y de
     noche: la sección cuadra con `grupos_uso()` y nada se desborda. **No se apretó «Crear grupo»** (lo hace el dueño).
-    - **Falta, en orden:** (1) publicar solo esto, después de las 6 p. m. y separado de la DPU45I y del acta
-      (CobrosView y MotosView tienen bloques de las dos cosas: método `publicar-una-parte-del-trabajo`); (2) el dueño
-      corre la 218; (3) publicar `manage-users`; (4) el dueño crea el grupo nuevo; (5) las 8 pruebas de abajo; (6)
-      `CLAUDE.md`, `DICCIONARIO-ESTADOS` y prueba espejo después de la 218.
+    - ✅ **13-nov: PUBLICADO (7a98de7)**, solo grupos (Cartera 4 de 12 bloques, Motos 8 de 18; la DPU45I, el acta y
+      el candado se quedaron en el PC). **La 218 CORRIDA** por el dueño: la verificación dio lo esperado y desde la
+      app CAPITAL MOTOS sale violeta con sus 14 motos, 174 fotos, 1 cuenta y el premio; 0 «USADAS» en pantalla.
+      Prueba espejo después de la 218: 154 diferencias, todas del próximo pago (DPU45I + 219), ninguna nueva.
+    - ✅ **13-nov: `manage-users` PUBLICADA** (con permiso del dueño, desde su Chrome). Probada: la lista carga los
+      15 usuarios y un socio con un grupo que no existe se rechaza con el mensaje nuevo, sin crear a nadie.
+    - **Falta, en orden:** (1) el dueño crea el grupo nuevo; (2) las pruebas 7 y 8 de abajo (1 a 6 ya pasaron);
+      (3) `CLAUDE.md` (la tabla de grupos dice USADAS) y `DICCIONARIO-ESTADOS`.
+    - **Visto y sin tocar (13-nov):** `ImportacionView.tsx:42` traduce «USADAS CLUB» a USADAS, que ya no existe: un
+      Excel viejo con «Usadas Club» se rechaza con el aviso de los grupos que hay.
     - **Visto y sin tocar:** en Cobro Diario, `grupoDePagoCaja` no recibe `tipo_registro` y en Caja sí, así que el
       alquiler de una prestada puede caer en un portafolio en Cobro Diario y en otro en Caja. Es de antes.
   - **218 escrita, sin correr** (`supabase/218_usadas_pasa_a_capital_motos.sql`): revisa antes (existe la 217, existe

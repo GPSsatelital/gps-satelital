@@ -567,6 +567,32 @@ se mide con ESA cuenta, no con un texto que se le parece.
 fila del diccionario, antes de subir; quedó «con liquidación abierta» y la ayuda explica la diferencia. **Qué lo evita:**
 antes de ponerle nombre a una cifra nueva, buscar ese nombre en el mismo módulo (regla 2 de las cifras), no solo el cálculo.
 
+### Escribí «no es ZALA» y era ZALA (10-nov)
+**Lo que pasó:** al medir quién se comía la salida de datos de Supabase (308 de 250 GB), encontré un programa en Python
+que entraba con la cuenta de análisis y lo anoté en la memoria y en PENDIENTES como «no es ZALA (ZALA entra por el
+pooler con `zala_lector`)». Le pregunté al dueño qué programa era. Contestó: *«eso lo hicimos por recomendación tuya»*.
+Al leer el código de ZALA, era ZALA: además de la vitrina, su `datos.py` lee las tablas por REST con la cuenta de
+análisis, y un hilo rehace la cuenta de cobros cada 60 segundos.
+**Por qué:** concluí con UNA puerta conocida (la vitrina) que no tenía otra, sin abrir el código que podía decirlo.
+**Quién lo cazó:** el dueño, con su respuesta; lo comprobé leyendo el código antes de proponer nada.
+**Qué lo evita ahora:** antes de escribir «no es X», buscar en el código de X la cuenta, la dirección o el programa
+que se vio en los registros (aquí, `Python-urllib` y la cuenta de análisis). Y una regla escrita (la de la vitrina)
+no prueba que el código la cumpla: se mide.
+
+### Le mostré dos tableros a la vez y no entendió; y leí «el siguiente lunes» como «el 16» (11-nov)
+**Lo que pasó:** al armar la pizarra de los supervisores «tipo Trello» le puse al dueño, en una sola pregunta, dos
+tableros para escoger (el día de cada supervisor y los encargos). Respondió «explícame mejor y más gráfico»; con un
+dibujo animado de los dos, «aún no logro entender bien». Se entendió cuando le mostré **una sola** pizarra, como una
+pizarra de oficina con papelitos, a las 8 a. m. y a las 5 p. m. Más tarde dijo «eso lo empezaremos a regir a partir del
+siguiente lunes» y yo lo leí como «el lunes 16-nov»: preguntó «¿qué me entendiste?». Quería decir «arranca un lunes,
+cuando esté lista» (D-083).
+**Por qué:** dos opciones abstractas a la vez, sin antes una sola idea clara, es justo el «menú sin ejemplo» que prohíbe
+la regla 1 de NO ROMPER. Y «el siguiente lunes» tenía dos lecturas y escogí una sin decirlo.
+**Quién lo cazó:** el dueño, las dos veces.
+**Qué lo evita ahora:** una idea nueva se muestra **una sola**, con algo que él conoce (la pizarra de la oficina), y solo
+después se ofrecen variantes. Cuando una frase suya tiene dos lecturas (fechas, «eso»), se le dicen las lecturas antes
+de planear sobre una.
+
 ### Puse la visita única a correr desde el 26-oct sin preguntar, y escribí un archivo fuera del proyecto (11-nov)
 **Lo que pasó:** en la revisión de la nómina de CARLOS ARIZA (D-084), en la lista de «terminada» puse que la visita
 repetida dejaba de pagarse desde la semana del 26-oct, con la misma fecha que el orden de pago. El dueño corrigió:
@@ -602,3 +628,44 @@ había preguntado.
 **Quién lo cazó:** yo, midiendo toda la flota antes y después de cada manera, no solo las placas de la revisión.
 **Qué lo evita ahora:** con la nómina, como con la cartera, cada cambio se mide en toda la flota y se mira placa por
 placa todo lo que se mueve, también lo que no estaba en la lista. Las dos trampas quedaron como pruebas automáticas.
+
+### Llamé «pago repetido» a dos semanas que el cliente pagó juntas (14-nov)
+**Lo que pasó:** anoté a YESID BARRAZA (RLT72H) como pago repetido: el 30-oct ANGELA registró una transferencia de
+$234.000 y un minuto después un efectivo de $234.000. El dueño: *«no parece ser así como dices»*. Tenía razón: el
+cliente venía dos semanas atrasado y pagó las dos ese día; hay 14 pagos para las 14 semanas que se le exigieron.
+**Por qué:** lo marqué solo por «mismo cliente, mismo valor, segundos de diferencia», sin contar cuántas semanas debía.
+Y la cifra con que dije que «los dos llenaron semana» estaba mal sumada: `aplicado_tarifa` ya incluye el ahorro y yo
+le volví a sumar `aplicado_ahorro` (de un pago de $234.000 me daba $299.000).
+**Quién lo cazó:** el dueño.
+**Qué lo evita ahora:** antes de llamar copia a un par, poner al lado las semanas exigidas y los pagos de ese contrato,
+semana por semana. Si cada pago tiene su semana, no es copia. Y `aplicado_ahorro` nunca se suma encima de
+`aplicado_tarifa`: es una parte de él.
+
+### Mapeé la ventana y no la puerta (14-nov)
+**Lo que pasó:** para la excepción de papeles (D-088) cambié el candado de la ventana «Entregar moto», pero antes de
+abrirla Inmovilizaciones ya frenaba la moto con su propio aviso de papeles. Con solo la ventana, FREDY nunca habría
+llegado al recuadro rojo.
+**Quién lo cazó:** yo, al probarlo en la pantalla con la ZHO35G antes de publicar (no salía la ventana).
+**Qué lo evita ahora:** antes de tocar una regla, buscar en todo `src/` la función que la dice (acá `textoBloqueo(`),
+no solo el archivo que uno tiene en la cabeza, y probar el camino completo desde el botón que usa la persona.
+
+### Leí «en una nueva sesión» al revés (18-nov)
+**Lo que pasó:** el dueño escribió «en una nueva sesion / por otro lado ya solucionamos el tema de la saturacion en
+supabase?». Yo entendí que la Evaluación se seguía en otra sesión y lo anoté así en la memoria y en PENDIENTES. Él:
+*«nooo que en una nueva sesion ibas a abrir para revisar eso que te dije etendiste mal»*. Lo que pedía era abrir otra
+sesión para revisar lo de Supabase.
+**Por qué:** pegué la frase a lo que veníamos haciendo y no a la pregunta que venía justo después.
+**Quién lo cazó:** el dueño.
+**Qué lo evita ahora:** cuando el dueño dice «en una nueva sesión …», va con lo que dice al lado: se abre la tarjeta
+de sesión aparte (`spawn_task`) para eso, y lo que se está haciendo sigue aquí.
+
+### Le pregunté dos veces lo del diccionario de ZALA como si fuera del negocio (18-nov)
+**Lo que pasó:** antes de hacer la Evaluación le pregunté si sus cifras iban al diccionario de ZALA. No entendió: *«como
+las pueden pedir fuera de la app? porque zala diria algo asi?»*. Se lo volví a explicar y me contestó *«que tiene que
+ver zala con eso, aun no entiendo»*.
+**Por qué:** era papeleo mío, que sale de la REGLA DE LA VITRINA, y se lo presenté como si fuera una decisión del
+negocio.
+**Quién lo cazó:** el dueño.
+**Qué lo evita ahora:** antes de preguntar, ver si es una pregunta de su negocio o de mi procedimiento. Si es de mi
+procedimiento, la decido yo con la regla escrita y se la digo en una línea. Quedó como D-093: las cifras internas del
+equipo no van al diccionario.

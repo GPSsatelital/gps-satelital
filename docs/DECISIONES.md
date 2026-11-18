@@ -1278,6 +1278,23 @@ De los 127 que pagaron efectivo en la oficina en los últimos 30 días, a 29 les
 **Ojo:** Importación Excel → «Pagos históricos» (solo el dueño) mete efectivo de la oficina: con la 215 corrida, los
 pagos de clientes a los que les falta algo se frenan. No se tocó.
 
+### D-073 · 10-nov-2026 · ZALA deja de bajar las tablas cada minuto: su cuenta de cobros sale de la vitrina
+**Decidió:** el dueño, el 10-nov, al ver que la organización de Supabase iba en 308 GB de salida de 250 (plazo 10-dic):
+eligió «los 2 pasos, en ZALA».
+**Qué se encontró (medido el 10-nov, leyendo el código de ZALA sin tocarlo):** un hilo de `servidor-zala.py` (`rueda()`)
+rehacía cada 60 segundos, las 24 horas, la cuenta de cobros (`cobros.pendientes()`), que baja contratos, clientes, hasta
+5.000 pagos, deudas y convenios por la API con la cuenta de análisis, sin comprimir: entre 9 y 10 GB al día, casi todo
+el gasto de la base. Esa cuenta, además, no es la de la pantalla: hay 5.814 pagos confirmados y baja 5.000 (por `id`,
+o sea, al azar); cuenta la mora desde el último abono; y el monto es `valor_semanal` entero, sin restar lo pagado.
+**Qué se decidió:**
+1. Ya (en ZALA): la cuenta se rehace cada 30 minutos y solo de 6 a. m. a 9 p. m., y la caché dura lo mismo, para que
+   un mensaje no la vuelva a disparar.
+2. Esta semana (en ZALA): la cuenta de cobros lee `zala.cliente` (`debe_hoy`, `dias_mora`, `estado_cartera`,
+   `plantilla_hoy`…), que es el espejo de `loQueDebe()` con 0 diferencias, en vez de bajar las tablas y calcular por
+   su lado. Es la REGLA DE LA VITRINA de CLAUDE.md, que ZALA no cumplía en esta parte.
+**No toca:** MotoGestión ni la vitrina. Lo de la app (no volver a bajar todo al volver a la pantalla, caché de
+comprobantes) va aparte, en P4.
+
 ### D-074 · 11-nov-2026 · CAPITAL MOTOS va en violeta, no en naranja
 **Decidió:** el dueño, el 11-nov, al ver el dibujo de la sección Grupos de día y de noche: eligió «Violeta».
 **Por qué:** en el dibujo, el ámbar de PRADERA y el naranja que la D-067 (punto 6) le había dado a CAPITAL MOTOS se
@@ -1288,6 +1305,119 @@ reconoce.
 migración 218 le cambia el color junto con el nombre (USADAS naranja → CAPITAL MOTOS violeta), y el naranja queda libre
 para un grupo nuevo.
 **No toca:** el resto de la D-067 ni lo ya corrido en la 217.
+
+### D-075 · 11-nov-2026 · Para cerrar el día, el supervisor reporta lo que no alcanzó y su jefe decide qué pasa con eso
+**Decidió:** el dueño, el 11-nov, mientras se armaba la pizarra de los supervisores «tipo Trello»
+(`docs/PIZARRA-SUPERVISORES.md`). Textual: «las actividades que no le alcancen a hacer en ese día deben ser reportadas
+para poder cerrar el día y su jefe es quien les permite rodar o quitar las actividades que tienen pendiente para ese
+día y aunque deberían cerrar a las 5 ellos se podrían extender un poco más».
+**Qué queda decidido:**
+1. Sin reportar lo pendiente, con su motivo, no se cierra el día.
+2. Lo pendiente no lo decide el supervisor: su jefe le permite, papelito por papelito, pasarlo para mañana o quitarlo.
+3. El cierre es a las 5 p. m., y el supervisor se puede extender un poco más.
+**Cómo se escribe:** en pantalla, «rodar» se llamará «pasar para mañana», porque en la app «rodar» ya es correr cajas de
+un contrato al final (mig 078, D-044).
+**Falta decidir** (sección 11 del documento): quién es «el jefe» (el dueño, ADMIN o los dos); hasta qué hora se puede
+extender y si necesita permiso; y qué hacen «quitar» y «pasar para mañana» en los papelitos que saca la app sola
+(cobro, recolección, moto guardada), donde la deuda no desaparece aunque se quite de la pizarra.
+**No toca:** nada construido. La pizarra es una propuesta y se aprueba por partes.
+
+### D-076 · 11-nov-2026 · Cuándo se llama al cliente: el día de pago basta el mensaje; en gabela, llamada en la tarde; en mora, siempre
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 1), después
+de que se le explicó la Ley 2300 (al cliente con el que ya hubo contacto no se le vuelve a contactar ese día). Textual:
+«que lo llame igual si el cliente quedó en algo en concreto a esa hora y que si ya no está en su día de pago ni en gabela
+con mayor razón deben llamarlo nuevamente, así se puede pasar con un solo mensaje son los días en los que le toca pagar
+que ya el mensaje es como tipo recordatorio pero los otros días son de cobro» y «el día de gabela un mensaje en la
+mañana y una llamada en la tarde si aún no se registra pago (…) aún tienen ese día de gracia para colocarse al día; ya
+después que salga en mora ya hay que hacerle gestión hasta que pague o se retenga».
+**Qué queda:**
+1. Día de pago: el mensaje es un recordatorio y basta. Se llama solo si el cliente quedó en algo concreto a una hora y
+   a esa hora no pagó.
+2. Gabela: mensaje en la mañana y llamada en la tarde si todavía no hay pago registrado.
+3. Mora: gestión hasta que pague o se retenga la moto, con llamada aunque haya contestado el mensaje.
+**Queda pendiente:** que un abogado diga si la Ley 2300 cubre el arriendo de motos (la revisión del 3-nov sigue a
+medias); la hora de la tarde para la llamada de gabela; y que la «Promesa de pago» guarde la hora (hoy solo el día,
+`fecha_compromiso`).
+**No toca:** nada construido. Coincide con el protocolo de mora de `CLAUDE.md` (día de pago y gabela, mensaje; mora,
+gestión exhaustiva) y le agrega la llamada de la tarde en gabela.
+
+### D-077 · 11-nov-2026 · La moto pasa a Recolección con 2 días en mora (antes, más de 3), y desde el primer día lleva la marca «ya se puede recoger»
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 2).
+Textual: «desde el miércoles se pueden recoger y se puede colocar algún distintivo de alguna manera pero que salga
+efectivamente para recoger el jueves». Con el ejemplo de un cliente que paga el lunes: martes gabela, miércoles 1 día
+en mora (marca «ya se puede recoger»), **jueves 2 días en mora: entra a Recolección**. Y «Para todo»: cambian juntas la
+pizarra, Cartera → Hoy y ZALA.
+**Qué reemplaza:** el umbral de la decisión del 9-sep-2026 (mig 136): «más de 3 días con la cuota vencida». El resto
+de esa regla sigue igual: cuentan los días en mora (`diasEnMora`, no los días desde el último pago), sin mínimo de plata
+(2-oct), sin plazo extra vigente, y la moto guardada sin prestada no va (29-sep, D-030).
+**Por qué se le explicó antes de decidir:** la lista de Recolección no da el permiso de recoger (desde el primer día de
+mora ya se puede, según el protocolo); dice cuáles van primero. Al bajar el umbral la lista crece; cuánto, está sin
+medir.
+**Dónde vive hoy el «más de 3» (buscado el 11-nov; se cambia todo junto o nada):** `vaARecoleccion` en
+`src/utils/cicloPago.ts:856`; `ReportesView.tsx:1397` (lo repite a mano, sin `vaARecoleccion`); `reportesCifras.ts:63`;
+el texto de ayuda de `PortafoliosReportes.tsx:131`; el comentario de `CobrosView.tsx:1169`; los pendientes del servidor
+(última versión en la 148; copiar de la base viva, no del archivo); `zala.cliente` y sus filas de `zala.diccionario`
+(mig 182: `estado_cartera`, `_reglas/7_recoleccion`) y `plantilla_hoy` (mig 136); las pruebas de `cicloPago`; la prueba
+espejo de ZALA; `CLAUDE.md` (panel Hoy) y `docs/DICCIONARIO-ESTADOS.md`.
+**No toca todavía:** nada. Antes de construir: medir cuántas motos entrarían con 2 días contra las de hoy y mostrárselo
+al dueño. Es lógica de cartera: no se publica lunes ni miércoles antes de las 6 p. m.
+
+### D-078 · 11-nov-2026 · La pizarra no saca cobro el domingo; los festivos se trabajan como un día normal
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 3): eligió
+«Sin cobro solo el domingo» entre tres opciones (sin cobro domingo y festivo · solo el domingo · se trabaja igual).
+**Qué queda:** el domingo la pizarra no saca papelitos de cobro ni pinta nada de naranja (su plan: el domingo no se
+trabaja). El festivo es un día normal de pizarra.
+**Lo que se le dijo antes de decidir:** según la revisión del 3-nov (a medias), la Ley 2300 no permite contactos de
+cobro en domingo ni en festivo; muchos festivos caen en lunes, el día en que paga la mayoría (271 de 310), y en el mes
+medido hubo 254 contactos en festivo (12-oct y 2-nov) y 7 en domingo. Lo de los festivos queda para el abogado, con
+lo demás de la Ley 2300 (D-076).
+**No toca:** el motor ni la cuenta de los días en mora: el domingo los días siguen contando como hoy.
+
+### D-079 · 11-nov-2026 · En la pizarra no existe «cubrir a un compañero»: si alguien falta, se le reasignan las motos como hoy
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 4): eligió
+«Sin cubrir a nadie» entre tres opciones (contárselo al dueño de la moto · al que hizo el trabajo · no existe cubrir).
+**Qué queda:** se descarta la mejora 6 de la sección 8 (pasarle la pizarra a otro por un día sin cambiar las motos). Si
+un supervisor falta, se le reasignan las motos desde Motos, como hoy, y la nómina sigue su regla de siempre
+(`motos_asignaciones`).
+**No toca:** la nómina (la revisa otra sesión, abierta el 11-nov).
+
+### D-080 · 11-nov-2026 · Lo pendiente del cierre del día lo decide ADMIN o el Administrador principal
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 5): «ADMIN y
+usted». Completa la D-075.
+**Qué queda:** lo que el supervisor no alcanzó lo reciben ADMIN (el encargado de toda la operación) y el Administrador
+principal, y cualquiera de los dos decide «Pasar para mañana» o «Quitar». Si el dueño no está, el cierre no se traba.
+La regla va en la base (RLS y la función que decide), no solo en la pantalla: un SUBADMIN no puede decidir lo suyo.
+**No toca:** nada construido.
+
+### D-081 · 11-nov-2026 · El supervisor puede cerrar su día hasta las 7 p. m., sin pedir permiso
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 6): «Hasta las
+7, sin permiso». Completa la D-075 («deberían cerrar a las 5, ellos se podrían extender un poco más»).
+**Qué queda:** el cierre es a las 5 p. m.; entre las 5 y las 7 el supervisor cierra sin pedir permiso, y la pizarra lo marca
+«cerró tarde» para el marcador. Las 7 p. m. coinciden con el fin del horario de contacto de la Ley 2300 entre semana.
+**Falta decidir:** qué pasa si a las 7 no ha cerrado (decisión 10 del documento).
+**No toca:** nada construido.
+
+### D-082 · 11-nov-2026 · «Quitar» y «Pasar para mañana» nunca tocan lo que debe el cliente
+**Decidió:** el dueño, el 11-nov, en la pizarra de los supervisores (`docs/PIZARRA-SUPERVISORES.md`, decisión 7): «Sí,
+así». Completa la D-075.
+**Qué queda:**
+1. En los papelitos que saca la app (cobro, recolección, moto guardada), la deuda no se toca desde la pizarra: la cuenta
+   Cartera (`loQueDebe()`), y mañana el papelito vuelve a salir solo si el cliente sigue debiendo.
+2. «Pasar para mañana»: hoy no le cuenta como incumplido al supervisor, y mañana el papelito sale de primero, marcado
+   «pasado de ayer».
+3. «Quitar»: hoy no le cuenta como incumplido, y mañana sale normal, en su orden.
+4. En los encargos (`tareas`): «Pasar para mañana» le cambia la fecha (`fecha_limite`) y «Quitar» lo cancela
+   (`estado='cancelada'`).
+**No toca:** nada construido. La pizarra nunca escribe en pagos, deudas, convenios ni cajas.
+
+### D-083 · 11-nov-2026 · La pizarra de los supervisores arranca un lunes
+**Decidió:** el dueño, el 11-nov («eso lo empezaremos a regir a partir del siguiente lunes»; aclarado: «La pizarra arranca
+un lunes»).
+**Qué queda:** la pizarra (y sus reglas: cierre del día, D-075 y D-080 a D-082) empieza a regir el primer lunes después de
+que esté lista y probada, para que la semana arranque completa con ella. No hay fecha fija: no es necesariamente el lunes
+16-nov.
+**Ojo al publicar:** el lunes es el día más pesado (271 de 310 pagan ese día) y nada de cartera se publica lunes antes de
+las 6 p. m.; lo que toque cartera (como la D-077) se publica a más tardar el sábado anterior.
 
 ### D-084 · 11-nov-2026 · Nómina: cada renglón dice por qué, ninguna moto queda por fuera, una visita por entrega y siempre el orden en que pagó el cliente
 **Decidió:** el dueño, al revisar la nómina de CARLOS ARIZA (atrasadas que el cliente «pagó a tiempo» y motos que «ni
@@ -1364,6 +1494,38 @@ cambiar plata. Ninguna semana estaba cerrada (`nomina_cierres` vacía).
 migración. 19 pruebas nuevas y 1 cambiada a propósito (IEW66I: ahora dice que la cerró el acuerdo). ZALA no lee la nómina
 (`docs/DICCIONARIO-ESTADOS.md` → C28). Explicado a cada supervisor en un PDF que no va al repo (lleva clientes).
 
+### D-088 · 14-nov-2026 · Devolver la moto retenida con los papeles vencidos: solo el administrador principal, como excepción
+**Decidió:** el dueño, para entregar la ZHO35G (VICTOR ALFONSO JIMENEZ) con el SOAT vencido el 27-sep y la
+tecnomecánica el 16-may: «podríamos habilitar entregarla así como excepción» · «Permiso solo para mí (Recomendado)» ·
+vio el dibujo y respondió «Sí, hazlo y publícalo (Recomendado)».
+**Qué se decidió:**
+1. La regla del 28-oct sigue igual: con el SOAT o la tecnomecánica vencidos, sin fecha o con la fecha mal escrita,
+   la moto no sale.
+2. **Única excepción:** al DEVOLVER una moto retenida (Inmovilizaciones › Entregar moto), el `ADMIN_PRINCIPAL` ve un
+   recuadro rojo con lo vencido, escribe por qué (mínimo 10 letras) y marca «La entrego con los papeles vencidos bajo
+   mi responsabilidad». Sin las dos cosas no guarda.
+3. Queda rastro en dos lados: el historial del contrato (`contratos_auditoria`, campo «Entrega con papeles vencidos
+   (excepción)», con la placa, lo vencido, quién y el motivo) y la nota de la entrega (`recepciones_vehiculo`). Si el
+   historial no se puede escribir, la moto no se entrega.
+4. **No cambia:** los demás roles siguen frenados igual; contrato nuevo (pasos 2 y 6), préstamo de reemplazo y cesión
+   no tienen excepción; el aviso de SOAT vencido sigue saliendo; ni plata, ni base, ni ZALA.
+**Dónde vive:** `papelesMoto.ts` (`puedeExceptuarPapeles`, `faltaParaExceptuar`, `MOTIVO_EXCEPCION_MINIMO`),
+`ModalEntregaDevolucion.tsx` y el candado de antes de abrir la ventana en `InmovilizacionesView.tsx`. Sin migración: la
+regla de papeles vive solo en la pantalla. 5 pruebas nuevas. Publicado el 14-nov (a0d07f9).
+
+### D-089 · 14-nov-2026 · La excepción de los papeles vencidos se presta por persona (por ahora a CARLOS ALVAREZ)
+**Decidió:** el dueño, con el cliente de la ZHO35G esperando: «debe hacerlo él mismo en persona, actívale a él también
+la misma opción mía y ya después lo arreglamos». Antes había elegido la autorización a distancia (una por moto, solo
+ese día, la puede usar cualquiera que entregue esa moto); eso queda para después y no se construyó.
+**Qué se decidió:**
+1. La excepción de la D-088 pasa a ser la acción `entregar_papeles_vencidos` («Entregar moto retenida con papeles
+   vencidos (excepción)», en Inmovilizaciones › Usuarios). Ningún rol la trae; el ADMIN_PRINCIPAL la tiene siempre.
+2. Se le prendió a CARLOS ALVAREZ (SUBADMIN) el 14-nov desde Usuarios, con la sesión del dueño.
+3. Quien no puede escribir el historial del contrato (el subadmin no tiene `editar_contrato`) deja el rastro solo en la
+   nota de la entrega, que se escribe antes de reactivar el contrato.
+**Pendiente:** cambiarla por la autorización a distancia y quitarle el permiso a CARLOS (está en `docs/PENDIENTES.md`).
+Publicado el 14-nov (51b74c0).
+
 ### D-090 · 17-nov-2026 · El estado de cuenta por WhatsApp tiene su propio mensaje: no es un cobro y ningún otro sale en su lugar
 **Decidió:** el dueño, al ver que el botón «Enviar por WhatsApp» de la ficha (Cartera) fallaba siempre («falta la
 plantilla», 121 de 121 desde septiembre): «eso no es un cobro, es un estado de cuenta y si se le envía es porque el
@@ -1424,3 +1586,15 @@ mensajes masivos, que lo hagan manualmente» y ZALA rechaza todo lo masivo. El d
 quién está en Recolección y no se usó en 30 días, queda anotado); la vitrina (no hay estado ni cifra nueva).
 **Dónde vive:** `baldeDeContrato` + `claveParaBalde` en `utils/mensajeria.ts` (con sus pruebas); `tareaMensaje` en
 `CobrosView.tsx`. Se borró `components/ModalEnvioMasivo.tsx` y `resumirTanda`.
+
+### D-093 · 18-nov-2026 · La «Evaluación» semanal de supervisores: la ven solo ADMIN_PRINCIPAL y ADMIN, y sus cifras no van a ZALA
+**De dónde sale:** el dueño pidió llevar a la app el informe de supervisores que se hizo en PDF el 18-nov («quiero un
+resumen de evaluacion que se pueda sacar semana a semana desde la app», «asi igual a ese y que podamos seguirlo
+mejorando»). Va en Reportes → Equipo → «Evaluación», con la cuenta en la base leyendo `cartera_del_dia`.
+**Qué se decidió:**
+1. La ven solo ADMIN_PRINCIPAL y ADMIN («Solo tú y el admin»). La base también lo exige, no solo la pantalla: un
+   supervisor que la pida directo a la base no recibe nada (regla de las dos capas, migración 026).
+2. Sus cifras (el % de cada supervisor, las motos que no se recogieron, etc.) **no se anotan en el diccionario de
+   ZALA**: son internas del equipo, no van a la vitrina `zala` y ZALA nunca habla de ellas. El dueño: «que tiene que
+   ver zala con eso». Vale para toda cifra interna del equipo (supervisores, nómina): la REGLA DE LA VITRINA es para lo
+   que se le dice a un cliente.

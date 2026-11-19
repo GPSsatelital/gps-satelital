@@ -1348,6 +1348,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 - [ ] 💻 📋 **Historial de visitas ya pagadas.** Ver qué visitas se pagaron en la nómina y en qué
   semana, para que no se paguen dos veces. ⚠️ **Por definir:** ¿una pantalla aparte, o una columna
   en el desprendible que ya existe?
+  *(19-nov, en la lista del dueño: «que ya salgan pagas las visitas y los referidos que ya se pagaron, para que no
+  sigan saliendo ahí como pendientes por pagar». Va con la memoria `referidos-visitas-pagado-nomina` del 17-nov:
+  aprobado leerlo del «Cerrar y pagar»; faltan 3 preguntas.)*
 
 - [ ] 🧑 📋 **Cambios de contrato Semanal → Quincenal** — IEW83I (JHON FREDDYS SANCHEZ), XZI08H
   (AILTON UCHIRODRIGUEZ), DQL82I (AGUSTIN TOVAR), RML41H (ALVARO WILCHES).
@@ -1371,16 +1374,78 @@ Lo que está afectando cifras reales de clientes en este momento.
   con la sesión del dueño para las semanas del 9 y del 2 de noviembre y compararla contra el PDF hasta que cuadre al
   peso · (3) la pantalla · (4) tsc + build + test + 375 px. No publicar hasta que el dueño diga.
   Después, en un paso aparte: anotar en `pagos` la hora de cada confirmación.
+  🔴 *(19-nov, el dueño, marcado «Importante»: tener en cuenta los pagos ingresados sin confirmar en las evaluaciones
+  de resultado → ver la lista del 19-nov, abajo. Cambia cómo se cuenta «completó la semana»: decidirlo antes de la
+  pantalla.)*
+
+### Lista del dueño del 19-nov — lo que no estaba anotado (cada una se explica cuando toque hacerla)
+El dueño la pasó el 19-nov: «déjalo como un bloque aparte las que no estén ya repetidas, para irlas explicando cuando
+toquen hacerlas». Las de su lista que ya estaban se anotaron en su sitio: la ubicación en la visita (abajo, lista del
+10-nov), Johan (abajo) y las visitas y referidos ya pagados (P2, «Historial de visitas ya pagadas»).
+
+- [ ] 🧑💻 **Registro de quién tiene la moto grande.** Desde la semana del 23-nov, quien tenga la moto grande responde
+  por lo que le pase y por el estado en que la reciba. ⚠️ **Por explicar cuando toque:** qué es «la moto grande», si
+  el registro va en la app o en papel, y cómo se anota el estado en que se recibe.
+- [ ] 🧑 **Seguimiento de los casos más graves con cada supervisor: WILINTON y CARLOS ARIZA.** ⚠️ **Por explicar
+  cuando toque:** cuáles son «los más graves», cada cuánto se revisan y si es una reunión o algo en la app. Puede ir
+  junto con «El formato de los más buscados» (lista del 10-nov).
+- [ ] 🧑 **Ajustar todas las cuentas de Google, la información personal de SERGIO y lo que debe tener «el otro».**
+  ⚠️ **Por explicar cuando toque:** qué cuentas, qué hay que ajustar en cada una y quién es «el otro».
+- [ ] 🧑💻 **Inventario de llaves y tarjetas:** saber cuáles se tienen hoy y cuáles no. ⚠️ **Por explicar cuando
+  toque:** si son las llaves y las tarjetas de propiedad de cada moto, y si va en la app (un dato por moto) o en una
+  lista aparte.
+
+*De la hoja a mano que mandó el mismo 19-nov.* El primer punto de la hoja, «Módulo de confirmar visitas (si no, no
+se paga)», ya estaba: es la regla que se anotó en «Confirmar dónde duerme la moto» (lista del 10-nov), y tiene que ver
+con «Módulo de visitas por confirmar» (más abajo).
+- [ ] 🧑💻 **Análisis del cliente al hacer la visita (proceso de selección).** ⚠️ **Por explicar cuando toque:** qué se
+  analiza, quién lo hace y si cambia cómo se aprueba la visita. Va junto con el punto siguiente.
+- [ ] 💻 **Preguntas nuevas en la visita:** si sabe manejar moto y si tiene licencia, hace cuánto maneja moto, cuánto
+  tanquea («definir mejor», dice la hoja) y cada cuánto la lava. ⚠️ **Por explicar cuando toque:** si van dentro de
+  la entrevista que ya tiene la visita (`visitas.entrevista`) y cuáles son obligatorias.
+- [ ] 🧑💻 **Al recibir los documentos, avisarle al cliente que se le puede cobrar la visita si no sale favorable en el
+  proceso de selección.** ⚠️ **Por explicar cuando toque:** si es un texto que dice el funcionario, un papel que firma
+  el cliente o algo en la app, y cuánto vale la visita.
+- [ ] 💻 🔴 **IMPORTANTE: contar los pagos ingresados sin confirmar en las evaluaciones de resultado, y que los
+  funcionarios los vean más claro y siempre a la vista.** Toca la «Evaluación» semanal (P3, arriba), que hoy solo
+  cuenta lo confirmado: un pago que la oficina todavía no confirmó deja al cliente como si no hubiera pagado. Del
+  pasado no se puede medir cuáles estaban sin confirmar, porque `pagos` no guarda la hora de la confirmación.
+  ⚠️ **Por explicar cuando toque:** cómo se cuentan (¿como pagados, o aparte?) y dónde los ve el funcionario.
+- [ ] 💻 **Fecha de nacimiento y edad de cada cliente.** Hoy ese dato no existe: medido el 19-nov, no aparece ni en el
+  código ni en las migraciones. La edad se calcula sola a partir de la fecha. ⚠️ **Por explicar cuando toque:** si es
+  obligatoria al registrar y qué se hace con los clientes que ya están.
+
+*Pedido por el dueño el mismo 19-nov, en el chat:* «desactivar que se puedan aprobar los clientes por excepción cuando
+les falta un documento».
+- [ ] 💻 **Quitar la aprobación de clientes por excepción cuando les falta un documento.** Hoy, en Clientes, a un
+  cliente con documentos faltantes le sale el botón «Permitir continuar por excepción» (`ClientesView.tsx`); el
+  ADMIN o el ADMIN_PRINCIPAL escriben un motivo y un plazo, y el cliente pasa a «Listo para visita» sin los papeles
+  (`aplicarExcepcion` en `useClientes.ts`). La base solo deja hacerlo a esos dos roles (guardián de `clientes`, mig
+  172). **Medido el 19-nov:** 42 clientes tienen la excepción puesta; a 36 ya se les venció el plazo para traer el
+  documento; 31 están Activos (ya con moto) y 6 van en camino (registro, visita o aprobados). Para que no vuelva a
+  pasar hay que quitar el botón Y cerrarlo en la base, porque la pantalla sola no protege (regla de las dos capas).
+  ⚠️ **Por explicar cuando toque:** qué se hace con los 42 que ya la tienen (sobre todo los 6 que no tienen moto
+  todavía), y si queda alguna salida para un caso de verdad urgente o ninguna. No confundir con la excepción de
+  papeles vencidos de la MOTO al devolverla retenida (D-088, que es otro permiso).
 
 ### Lista del dueño del 10-nov (se hacen junto con los demás pendientes, después de la liquidación de la YAC80H)
 
 - [ ] 💻 **Confirmar dónde duerme la moto: que le salga a quien HIZO la visita.** Pasa que una persona hace la visita
   y la visita está asignada a otra; la que fue no puede confirmar dónde duerme la moto. Hay que revisar en el código
   quién puede confirmar hoy (`visitas.asignada_a` contra `visitas.realizada_por`). ⚠️ **Por definir:** ¿la ven las
-  dos personas, o solo la que la hizo?
+  dos personas, o solo la que la hizo? *(19-nov, el dueño agrega: «restricción de pago de visita si no se confirma la
+  ubicación»: que la visita no se pague si no se confirmó dónde duerme la moto.)*
+  🔨 **19-nov: definido y construido (D-094).** Solo la confirma quien la hizo, en el módulo «📍 Confirmar
+  ubicación», y se le paga en la semana en que confirma; rige desde las entregas del 19-nov. Migración 225 corrida
+  el 19-nov (antes y después: 234 en la cola, 29 avisos). **Falta:** publicar la pantalla, probarla con la primera
+  entrega real (y que un supervisor no pueda confirmar la de otro) y decidir qué pasa con el pago si el
+  administrador descubre que lo confirmado no era verdad.
 - [ ] 🧑💻 **Usuario para Johan con accesos y vistas especiales.** Hay que definirlo en una sesión antes de crearlo:
   qué ve, qué puede hacer y qué rol le corresponde, o si hace falta uno nuevo. *(13-nov: sigue con 0 motos;
-  primero decidir qué hace, ver el bloque del 13-nov arriba.)*
+  primero decidir qué hace, ver el bloque del 13-nov arriba.)* *(19-nov, en la lista del dueño, debajo de Johan:
+  **Motos** — de qué grupo es cada moto · **Contratos** — cuándo empezó y cuándo termina, para las entregas de
+  repuestos · **Taller** — sacar las motos que están en taller y por liquidación · **Inmovilizaciones** — solo ver.
+  Al hacerlo, confirmar que son sus accesos.)*
 - [ ] 💻 **El formato de «los más buscados».** Una lista de los más buscados, o sea, a quiénes hay que hacerles
   alguna gestión. ⚠️ **Por definir:** ¿es un papel para imprimir o una pantalla? ¿Quién entra a la lista (mora,
   recolección, moto sin ubicar) y qué datos lleva cada uno?

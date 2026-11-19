@@ -548,7 +548,7 @@ export default function ReportesView({ onNavigate }: Props) {
       asignaciones: tramosAsignacion,
   }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, rodadoTodoEl, semanaCerradaNomina, tramosAsignacion]);
   const nominaDetalle = useMemo(() => {
-    if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [] };
+    if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [], visitasPorConfirmar: [] } as ReturnType<typeof nominaSemanaDetallada>;
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
   }, [tab, pdfPideNomina, lunesNomina, domingoNomina, entradasNomina, eventosNomina]);
   const nominas = nominaDetalle.nominas;
@@ -582,6 +582,16 @@ export default function ReportesView({ onNavigate }: Props) {
   const sinGestionPorCobrador = useMemo(() => {
     const m = new Map<string, typeof nominaDetalle.sinGestion>();
     for (const x of nominaDetalle.sinGestion) {
+      if (!m.has(x.cobradorId)) m.set(x.cobradorId, []);
+      m.get(x.cobradorId)!.push(x);
+    }
+    return m;
+  }, [nominaDetalle]);
+  // Las visitas que esperan que quien las hizo confirme dónde duerme la moto (D-094): todavía no se
+  // pagan, y se muestran en su detalle para que sepa por qué y cuánto le falta.
+  const visitasEsperanPorCobrador = useMemo(() => {
+    const m = new Map<string, typeof nominaDetalle.visitasPorConfirmar>();
+    for (const x of nominaDetalle.visitasPorConfirmar) {
       if (!m.has(x.cobradorId)) m.set(x.cobradorId, []);
       m.get(x.cobradorId)!.push(x);
     }
@@ -2275,6 +2285,7 @@ export default function ReportesView({ onNavigate }: Props) {
         : etapaNomina === "anterior" ? "Esta semana es de antes del 26 de octubre: se pagó por fuera de la app."
         : `Se puede cerrar desde el ${diaCorteTxt}. Hasta entonces es precorte: se revisa y se confirman los pagos que falten.`;
       const deriva = derivaNomina.get(valor);
+      const esperandoConfirmar = ci ? [] : (visitasEsperanPorCobrador.get(valor) ?? []);
       const botonPie: React.CSSProperties = { flex: "1 1 140px", height: 44, borderRadius: 12, cursor: puedeCerrar ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: puedeCerrar ? 1 : 0.5, fontFamily: "inherit" };
       setDetalle({
         titulo: nombre.toUpperCase(),
@@ -2287,6 +2298,11 @@ export default function ReportesView({ onNavigate }: Props) {
                 <div key={t} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>{t}</span><span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plataT(v)}</span></div>
               ))}
             {!ci && <div style={{ fontSize: 12, color: "var(--muted2)" }}>De las {motosQueTenia(valor, lunesNomina).length} motos que ya tenía al empezar la semana, {motosQueTenia(valor, lunesNomina).length - sinPago.length} le generaron pago.</div>}
+            {esperandoConfirmar.length > 0 && (
+              <div style={{ fontSize: 12, color: "var(--muted2)", background: "var(--soft2)", border: "1px solid var(--line)", borderRadius: 10, padding: "6px 10px", lineHeight: 1.45 }}>
+                ⏳ {esperandoConfirmar.length === 1 ? "1 visita espera" : `${esperandoConfirmar.length} visitas esperan`} que confirme dónde duerme la moto ({esperandoConfirmar.map(e => e.placa).join(", ")}): {plataT(esperandoConfirmar.reduce((a, e) => a + e.valor, 0))}. Se pagan la semana en que las confirme.
+              </div>
+            )}
             {deriva !== undefined && (
               <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "6px 10px", lineHeight: 1.45 }}>
                 Entró plata de esta semana después de pagarla. Se le pagó {plataT(x.n.total)}; con lo de hoy daría {plataT(deriva)}. La diferencia de {plataT(Math.abs(deriva - x.n.total))} va en la próxima.

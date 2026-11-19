@@ -498,6 +498,91 @@ describe("visitas domiciliarias", () => {
   });
 });
 
+// ── D-094 (19-nov-2026): desde las entregas del 19-nov, la visita se paga cuando quien la hizo
+// CONFIRMA dónde duerme la moto, en la semana de la confirmación. Las de antes, como siempre.
+describe("visitas: se pagan al confirmar dónde duerme la moto (entregas desde el 19-nov)", () => {
+  const LUMAR = "LUMAR";
+  const visita = { id: "v1", cliente_id: "cl1", realizada_por: LUMAR, fecha: "2026-11-16", estado: "Aprobado" };
+  const sem = (desde: string, hasta: string, contratos: ContratoNomina[]) =>
+    nominaSemanaDetallada({ desde, hasta, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES, pagos: [], contratos, visitas: [visita] });
+  const visitasDe = (r: ReturnType<typeof sem>) => r.nominas.flatMap(x => x.renglones).filter(x => x.tipo === "visita");
+  const entregada = (fecha: string, over: Partial<ContratoNomina> = {}): ContratoNomina =>
+    ({ ...CONTRATO, fecha_entrega: fecha, ...over });
+
+  it("lo de antes NO cambia: entregada el 18-nov sin validar, se paga en la semana de la entrega", () => {
+    const r = sem("2026-11-16", "2026-11-22", [entregada("2026-11-18")]);
+    expect(visitasDe(r)).toHaveLength(1);
+    expect(visitasDe(r)[0].fecha).toBe("2026-11-18");
+    expect(visitasDe(r)[0].porque).toBeUndefined();
+    expect(r.visitasPorConfirmar).toHaveLength(0);
+  });
+
+  it("lo de antes NO cambia: entregada el 18-nov con «no coincide», no se paga aunque haya sitio", () => {
+    const r = sem("2026-11-16", "2026-11-22", [entregada("2026-11-18", {
+      ubicacion_moto_resultado: "no_coincide", ubicacion_confirmada_en: "2026-11-20T15:00:00+00:00" })]);
+    expect(visitasDe(r)).toHaveLength(0);
+  });
+
+  it("entregada el 19-nov sin confirmar: no se paga y sale esperando, con su valor", () => {
+    const r = sem("2026-11-16", "2026-11-22", [entregada("2026-11-19")]);
+    expect(visitasDe(r)).toHaveLength(0);
+    expect(r.visitasPorConfirmar).toHaveLength(1);
+    expect(r.visitasPorConfirmar[0]).toMatchObject({
+      cobradorId: LUMAR, placa: "ABC12D", visitaEl: "2026-11-16", entregadaEl: "2026-11-19", valor: VALOR_VISITA });
+  });
+
+  it("✓ confirmó el martes 24: se paga en la semana del 23 al 29, con la fecha de la visita en el detalle", () => {
+    const c = entregada("2026-11-19", { ubicacion_moto_resultado: "coincide", ubicacion_confirmada_en: "2026-11-24T14:00:00+00:00" });
+    expect(visitasDe(sem("2026-11-16", "2026-11-22", [c]))).toHaveLength(0);
+    const r = sem("2026-11-23", "2026-11-29", [c]);
+    const v = visitasDe(r);
+    expect(v).toHaveLength(1);
+    expect(v[0].valor).toBe(VALOR_VISITA);
+    expect(v[0].fecha).toBe("2026-11-24");
+    expect(v[0].cobradorId).toBe(LUMAR);
+    expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: confirmó dónde duerme la moto el 24 de nov");
+    expect(r.visitasPorConfirmar).toHaveLength(0);
+  });
+
+  it("✗ no coincide y todavía sin sitio documentado: no se paga y sigue esperando", () => {
+    const r = sem("2026-11-23", "2026-11-29", [entregada("2026-11-19", { ubicacion_moto_resultado: "no_coincide" })]);
+    expect(visitasDe(r)).toHaveLength(0);
+    expect(r.visitasPorConfirmar).toHaveLength(1);
+  });
+
+  it("✗ no coincide y documentó el sitio real: se paga en la semana en que lo documentó", () => {
+    const r = sem("2026-11-23", "2026-11-29", [entregada("2026-11-19", {
+      ubicacion_moto_resultado: "no_coincide", ubicacion_confirmada_en: "2026-11-26T16:00:00+00:00" })]);
+    const v = visitasDe(r);
+    expect(v).toHaveLength(1);
+    expect(v[0].fecha).toBe("2026-11-26");
+    expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: documentó el sitio real el 26 de nov");
+  });
+
+  it("la semana es la de COLOMBIA: confirmar el domingo 29 a las 9 p. m. cae en la semana del 23 al 29", () => {
+    const c = entregada("2026-11-19", { ubicacion_moto_resultado: "coincide", ubicacion_confirmada_en: "2026-11-30T02:00:00+00:00" });
+    expect(visitasDe(sem("2026-11-23", "2026-11-29", [c]))).toHaveLength(1);
+    expect(visitasDe(sem("2026-11-30", "2026-12-06", [c]))).toHaveLength(0);
+  });
+
+  it("una entrega paga UNA sola visita también con la regla nueva (D-084), y sale esperando una sola vez", () => {
+    const repetida = { ...visita, id: "v2", fecha: "2026-11-17" };
+    const base = { motos: MOTOS, recepciones: [], clientesPorId: CLIENTES, pagos: [] };
+    const sinConfirmar = nominaSemanaDetallada({ ...base, desde: "2026-11-16", hasta: "2026-11-22",
+      contratos: [entregada("2026-11-19")], visitas: [visita, repetida] });
+    expect(sinConfirmar.visitasPorConfirmar).toHaveLength(1);
+    const confirmada = nominaSemanaDetallada({ ...base, desde: "2026-11-23", hasta: "2026-11-29",
+      contratos: [entregada("2026-11-19", { ubicacion_moto_resultado: "coincide", ubicacion_confirmada_en: "2026-11-24T14:00:00+00:00" })],
+      visitas: [visita, repetida] });
+    expect(confirmada.nominas.flatMap(x => x.renglones).filter(x => x.tipo === "visita")).toHaveLength(1);
+  });
+
+  it("la entrega todavía no ha llegado en la semana que se mira: no sale esperando", () => {
+    const r = sem("2026-11-09", "2026-11-15", [entregada("2026-11-19")]);
+    expect(r.visitasPorConfirmar).toHaveLength(0);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // SEMANA CERRADA (mig 120): al pagar, las cifras se CONGELAN. La pantalla vuelve a leerlas desde
 // los renglones guardados, así que releerlos tiene que dar exactamente lo mismo que se pagó —

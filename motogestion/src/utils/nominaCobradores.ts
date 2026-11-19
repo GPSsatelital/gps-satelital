@@ -91,8 +91,25 @@ export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
  *   · Se REVIERTE si la validación de ubicación sale falsa: "se paga por dejar el dato CIERTO"
  *     (dueño, 30-jul). Si la moto NO duerme donde el cliente declaró, esa visita no vale.
  *   · El portafolio sale solo: para cuando se paga, el cliente ya tiene moto y la moto tiene grupo.
+ *   · 🔴 Desde las entregas del 19-nov-2026 se paga al CONFIRMAR, no al entregar (D-094): ver
+ *     DESDE_CONFIRMA_VISITADOR.
  */
 export const VALOR_VISITA = 40000;
+
+/**
+ * LA VISITA SE PAGA AL CONFIRMAR DÓNDE DUERME LA MOTO (D-094, regla del dueño, 19-nov-2026).
+ *
+ * Para las motos entregadas desde este día, la visita la confirma QUIEN LA HIZO, en el módulo
+ * «Confirmar ubicación»: mira en el GPS dónde durmió la moto y marca ✓ (duerme donde se declaró) o
+ * ✗ y va a documentar el sitio real (GPS, foto, encargado). Se paga en la semana de esa
+ * confirmación —`contratos.ubicacion_confirmada_en`, que la base escribe una sola vez y no se mueve
+ * aunque después se actualice el sitio (mig 225)— con la fecha de la visita en el detalle. Mientras
+ * no confirme, la visita queda esperando: no se paga, pero tampoco se pierde.
+ *
+ * Las entregadas ANTES de este día siguen con la regla de siempre (semana de la entrega, y no se
+ * paga si la validación dijo «no coincide»). Las valida el supervisor de la moto, 5 por día (mig 145).
+ */
+export const DESDE_CONFIRMA_VISITADOR = "2026-11-19";
 
 /**
  * EL REFERIDO PROPIO — $30.000 (regla del dueño, 15-sep-2026): *"si alguno tiene un referido
@@ -257,6 +274,20 @@ export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   cambio_supervisor: "Pasó a otro supervisor esta semana: su pago se le cuenta al nuevo",
 };
 
+/** Una visita de una moto entregada desde el 19-nov que todavía espera que quien la hizo confirme
+ *  dónde duerme la moto (D-094). No se paga hasta entonces; se muestra para que sepa qué le falta. */
+export type VisitaPorConfirmar = {
+  cobradorId: string;
+  contratoId: string;
+  motoId: string;
+  placa: string;
+  grupo: string;
+  cliente: string;
+  visitaEl: string;
+  entregadaEl: string;
+  valor: number;
+};
+
 export type MotoSinGestion = {
   motoId: string;
   placa: string;
@@ -272,6 +303,8 @@ export type MotoSinGestion = {
 export type ContratoNomina = ContratoCiclo & {
   /** Validación de dónde duerme la moto: si dice 'no_coincide', la visita no se paga. */
   ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
+  /** Cuándo quedó confirmado dónde duerme la moto (mig 225): de ahí sale la semana de la visita (D-094). */
+  ubicacion_confirmada_en?: string | null;
   id: string;
   cliente_id: string;
   moto_id: string | null;
@@ -895,7 +928,7 @@ export function nominaSemanaDetallada(opts: {
    * Sin libro, todo es del supervisor de hoy, como antes.
    */
   asignaciones?: TramoAsignacion[] | null;
-}): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
+}): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[]; visitasPorConfirmar: VisitaPorConfirmar[] } {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [], referidos = [] } = opts;
   const libro = opts.asignaciones ? libroDeAsignaciones(opts.asignaciones) : null;
   /** De quién era la moto ese día (D-061). Si el libro no sabe de ella, del supervisor de hoy. */
@@ -1279,8 +1312,15 @@ export function nominaSemanaDetallada(opts: {
   // otra vez) no es otra visita: a la NHT77I se le hizo 4 veces en 15 minutos y se pagaron $160.000. Se
   // paga la última que se hizo antes de entregar —la que quedó buena—, en todas las semanas. Lo que ya se
   // pagó de más no se descuenta (dueño, 11-nov: «ya dejémoslo así»).
+  //
+  // 🔴 Desde las entregas del 19-nov-2026 (D-094) se paga en la semana en que quien la hizo CONFIRMA
+  // dónde duerme la moto, no en la de la entrega. Ver DESDE_CONFIRMA_VISITADOR. Esta forma de unir
+  // visita y entrega tiene su espejo en la base (`public.visita_de_entrega`, mig 225), que decide a quién
+  // le sale la confirmación: si se toca una, hay que tocar la otra.
   const visitaPagada = new Set<string>();
   const entregaConVisita = new Set<string>();
+  const porConfirmarVisto = new Set<string>();
+  const visitasPorConfirmar: VisitaPorConfirmar[] = [];
   const ultimaPrimero = [...visitas].sort((a, b) =>
     dia(b.fecha).localeCompare(dia(a.fecha)) || (b.created_at ?? "").localeCompare(a.created_at ?? ""));
   for (const v of ultimaPrimero) {
@@ -1294,20 +1334,44 @@ export function nominaSemanaDetallada(opts: {
     if (!c || !c.moto_id) continue;
     if (entregaConVisita.has(c.id)) continue;
     const entrega = dia(c.fecha_entrega!);
-    if (entrega < desde || entrega > hasta) continue;
-    // "Se paga por dejar el dato CIERTO": si la validación dice que la moto NO duerme ahí, no vale.
-    if (c.ubicacion_moto_resultado === "no_coincide") continue;
     const moto = motoDe.get(c.moto_id);
     if (!moto) continue;
+    let pagaEl = entrega;
+    let porque: string | undefined;
+    if (entrega >= DESDE_CONFIRMA_VISITADOR) {
+      if (!c.ubicacion_confirmada_en) {
+        // Todavía no confirma: no se paga, pero se le muestra lo que le falta.
+        if (entrega <= hasta && !porConfirmarVisto.has(c.id)) {
+          porConfirmarVisto.add(c.id);
+          visitasPorConfirmar.push({
+            cobradorId: v.realizada_por, contratoId: c.id, motoId: moto.id, placa: moto.placa,
+            grupo: moto.grupo ?? "—", cliente: clientesPorId.get(c.cliente_id) ?? "—",
+            visitaEl: dia(v.fecha), entregadaEl: entrega, valor: VALOR_VISITA,
+          });
+        }
+        continue;
+      }
+      pagaEl = diaColombia(c.ubicacion_confirmada_en);
+      porque = `Visita del ${fechaCorta(v.fecha)}, entregada el ${fechaCorta(entrega)}: `
+        + (c.ubicacion_moto_resultado === "no_coincide"
+            ? `documentó el sitio real el ${fechaCorta(pagaEl)}`
+            : `confirmó dónde duerme la moto el ${fechaCorta(pagaEl)}`);
+    } else if (c.ubicacion_moto_resultado === "no_coincide") {
+      // "Se paga por dejar el dato CIERTO": si la validación dice que la moto NO duerme ahí, no vale.
+      continue;
+    }
+    if (pagaEl < desde || pagaEl > hasta) continue;
     visitaPagada.add(v.id);
     entregaConVisita.add(c.id);
     renglones.push({
       motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—",
       cliente: clientesPorId.get(c.cliente_id) ?? "—",
-      tipo: "visita", fecha: entrega, valor: VALOR_VISITA,
+      tipo: "visita", fecha: pagaEl, valor: VALOR_VISITA,
       cobradorId: v.realizada_por,          // la cobra quien la hizo, no el dueño de la moto
+      ...(porque ? { porque } : {}),
     });
   }
+  visitasPorConfirmar.sort((a, b) => a.entregadaEl.localeCompare(b.entregadaEl) || a.placa.localeCompare(b.placa));
 
   // ── 2d) EL REFERIDO PROPIO: $30.000 a QUIEN TRAJO al cliente, en la semana de la entrega ────
   // Ver VALOR_REFERIDO. Va aparte de la visita a propósito: quien trae al cliente y quien va a
@@ -1500,6 +1564,7 @@ export function nominaSemanaDetallada(opts: {
       .map(([subadminId, rs]) => resumirRenglones(subadminId, rs))
       .sort((a, b) => b.total - a.total),
     sinGestion,
+    visitasPorConfirmar,
   };
 }
 

@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import DashboardView from "./pages/DashboardView";
 import CampanaAlertas from "./components/CampanaAlertas";
 import { nombreSubadminCacheado } from "./hooks/useSubadmins";
+import { useConfirmacionesUbicacion } from "./hooks/useConfirmacionesUbicacion";
 // Vistas cargadas bajo demanda (code-splitting): el arranque solo baja Login + Dashboard,
 // las demás pantallas se descargan al navegar a ellas.
 const MotosView = lazy(() => import("./pages/MotosView"));
@@ -39,13 +40,14 @@ const FichaClienteView = lazy(() => import("./pages/FichaClienteView"));
 const FichaMotoView = lazy(() => import("./pages/FichaMotoView"));
 const HistorialPagosView = lazy(() => import("./pages/HistorialPagosView"));
 const TarjetasLlavesView = lazy(() => import("./pages/TarjetasLlavesView"));
+const ConfirmarUbicacionView = lazy(() => import("./pages/ConfirmarUbicacionView"));
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
   | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion"
   | "ficha_cliente" | "ficha_moto" | "historial_pagos" | "tarjetas_llaves"
-  | "mis_visitas" | "mi_dia";
+  | "mis_visitas" | "mi_dia" | "confirmar_ubicacion";
 
 export type NavContext = { view: ViewKey; filter: string };
 type EnPila = NavContext & { id: number; scroll: number; ultimaGuardia: number };
@@ -142,6 +144,7 @@ const SIDE_GROUPS: SideGroup[] = [
   {
     label: "SEGUIMIENTO",
     items: [
+      { key: "confirmar_ubicacion", label: "Confirmar ubicación", icon: "📍" },
       { key: "alertas", label: "Alertas", icon: "🔔" },
       { key: "inmovilizaciones", label: "Inmovilizaciones", icon: "🚨" },
       { key: "reportes", label: "Reportes", icon: "📈" },
@@ -166,17 +169,29 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
   ficha_cliente: "Ficha de Cliente", ficha_moto: "Ficha de Moto", historial_pagos: "Historial de Pagos",
   tarjetas_llaves: "Tarjetas y Llaves", mis_visitas: "Mis Visitas", mi_dia: "Mi Día",
+  confirmar_ubicacion: "Confirmar ubicación",
 };
+
+// El número junto a un módulo del menú: cuántas cosas le faltan a uno ahí.
+function Cuenta({ n }: { n: number }) {
+  return (
+    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "var(--warn-ink)", color: "var(--card)", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
 function Sidebar({
-  ctx, navigate, puedeVer, collapsed, onCollapse,
+  ctx, navigate, puedeVer, collapsed, onCollapse, cuentas,
 }: {
   ctx: NavContext;
   navigate: (v: ViewKey, f?: string) => void;
   puedeVer: (v: ViewKey) => boolean;
   collapsed: boolean;
   onCollapse: () => void;
+  /** Lo que le falta a uno en un módulo, junto a su nombre: «📍 Confirmar ubicación  2». */
+  cuentas?: Partial<Record<ViewKey, number>>;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const o: Record<string, boolean> = {};
@@ -253,6 +268,7 @@ function Sidebar({
                     <span style={{ fontSize: 16 }}>{item.icon}</span>
                     {!collapsed && item.label}
                   </span>
+                  {!collapsed && !!cuentas?.[item.key] && <Cuenta n={cuentas[item.key]!} />}
                   {!collapsed && item.sub && <span style={{ fontSize: 10, color: "var(--muted3)" }}>{open[item.key] ? "▾" : "▸"}</span>}
                 </button>
 
@@ -297,12 +313,13 @@ function Sidebar({
 
 // ─── Mobile "Más" sheet ───────────────────────────────────────────────────────
 function MasSheet({
-  ctx, navigate, puedeVer, onClose,
+  ctx, navigate, puedeVer, onClose, cuentas,
 }: {
   ctx: NavContext;
   navigate: (v: ViewKey, f?: string) => void;
   puedeVer: (v: ViewKey) => boolean;
   onClose: () => void;
+  cuentas?: Partial<Record<ViewKey, number>>;
 }) {
   // Módulos agrupados por sección — misma taxonomía que el sidebar desktop
   const secciones: Array<{ titulo: string; items: Array<{ key: ViewKey; icon: string; label: string; desc: string }> }> = [
@@ -333,6 +350,7 @@ function MasSheet({
     {
       titulo: "SEGUIMIENTO",
       items: [
+        { key: "confirmar_ubicacion", icon: "📍", label: "Confirmar ubicación", desc: "Dónde duerme la moto de tus visitas" },
         { key: "alertas",          icon: "🔔", label: "Alertas",          desc: "Mora, SOAT, tecno y situaciones activas" },
         { key: "inmovilizaciones", icon: "🚨", label: "Inmovilizaciones", desc: "Motos a recuperar por mora" },
         { key: "reportes",         icon: "📈", label: "Reportes",         desc: "Recaudo, mora, flota y alertas" },
@@ -388,7 +406,10 @@ function MasSheet({
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{e.label}</div>
                   <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>{e.desc}</div>
                 </div>
-                <span style={{ marginLeft: "auto", color: "var(--line2)", fontSize: 18 }}>›</span>
+                <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                  {!!cuentas?.[e.key] && <Cuenta n={cuentas[e.key]!} />}
+                  <span style={{ color: "var(--line2)", fontSize: 18 }}>›</span>
+                </span>
               </button>
             ))}
           </div>
@@ -475,6 +496,12 @@ function Shell() {
   const motosScope = scope.filtrarMotos(motos);
   const contratosScope = scope.filtrarContratos(contratos);
 
+  // El número del menú en «📍 Confirmar ubicación» (D-094): lo que le falta confirmar a UNO de sus
+  // propias visitas. Al jefe no le cuenta las de los demás: esas las revisa adentro.
+  const { filas: confirmaciones } = useConfirmacionesUbicacion(roleActual === "SUBADMIN" || esAdmin);
+  const pendientesMas = confirmaciones.filter(f => !f.confirmada_en && f.visitador_id === profile?.id).length;
+  const cuentasMenu: Partial<Record<ViewKey, number>> = pendientesMas > 0 ? { confirmar_ubicacion: pendientesMas } : {};
+
   // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
   function accesoPorRol(view: ViewKey): boolean {
     if (view === "importacion") return roleActual === "ADMIN_PRINCIPAL";
@@ -501,6 +528,10 @@ function Shell() {
     // Usuarios & Roles: exclusivo de ADMIN_PRINCIPAL, sin excepción — ningún acceso a
     // medida puede otorgarlo a otro rol (evita que alguien se autoconceda gestión de cuentas).
     if (view === "usuarios") return roleActual === "ADMIN_PRINCIPAL";
+    // Confirmar ubicación (D-094): la usa quien hace las visitas (SUBADMIN) y la revisan ADMIN y
+    // ADMIN_PRINCIPAL. Va por rol y no por accesos a medida: si dependiera de la lista de cada uno,
+    // a un supervisor sin ese acceso le quedarían visitas por confirmar sin dónde hacerlo.
+    if (view === "confirmar_ubicacion") return roleActual === "SUBADMIN" || esAdmin;
     const p = profile?.permisos;
     // Lista a medida (incluso vacía) manda; sin lista (NULL) usa el default del rol.
     // SOCIO siempre va por su dashboard aparte, así que su lista vacía no afecta.
@@ -667,6 +698,7 @@ function Shell() {
         {c.view === "ficha_moto"     && c.filter && <FichaMotoView motoId={c.filter} onNavigate={navigate} volver={volverDe(c)} />}
         {c.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
         {c.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}
+        {c.view === "confirmar_ubicacion" && puedeVer("confirmar_ubicacion") && <ConfirmarUbicacionView />}
         </Suspense>
       </>
     );
@@ -795,13 +827,16 @@ function Shell() {
                 borderTop: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "2px solid var(--accent)" : "2px solid transparent",
               }}
             >
-              <span style={{ fontSize: 22 }}>☰</span>
+              <span style={{ fontSize: 22, position: "relative" }}>
+                ☰
+                {pendientesMas > 0 && <span style={{ position: "absolute", top: -4, right: -12 }}><Cuenta n={pendientesMas} /></span>}
+              </span>
               <span style={{ fontSize: 10, fontWeight: 500 }}>Más</span>
             </button>
           )}
         </nav>
 
-        {masOpen && <MasSheet ctx={ctx} navigate={navigate} puedeVer={puedeVer} onClose={() => setMasOpen(false)} />}
+        {masOpen && <MasSheet ctx={ctx} navigate={navigate} puedeVer={puedeVer} cuentas={cuentasMenu} onClose={() => setMasOpen(false)} />}
         {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
       </div>
       </SubadminScopeProvider>
@@ -815,7 +850,7 @@ function Shell() {
     <SubadminScopeProvider scope={scope}>
     <div style={{ minHeight: "100vh", display: "flex", fontFamily: "var(--font-ui)", color: "var(--text)" }}>
       <InstallBanner />
-      <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
+      <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} cuentas={cuentasMenu} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: "100vh" }}>
         {/* Desktop top bar */}

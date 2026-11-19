@@ -14,9 +14,13 @@ interface Props {
   placa: string;
   onClose: () => void;
   onDone?: () => void;
+  /** Guardar por la función de quien hizo la visita (mig 077) aunque no sea VISITADOR: desde el
+   *  módulo «Confirmar ubicación» (D-094) la moto que visitó un SUBADMIN puede ser de otro
+   *  supervisor, y por RLS él no puede cambiar ese contrato. */
+  comoVisitador?: boolean;
 }
 
-export default function ModalRegistrarGuardado({ contratoId, clienteNombre, placa, onClose, onDone }: Props) {
+export default function ModalRegistrarGuardado({ contratoId, clienteNombre, placa, onClose, onDone, comoVisitador }: Props) {
   const { registrarGuardadoMoto } = useContratos();
   const { profile } = useAuth();
 
@@ -74,7 +78,7 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
       // tocar un contrato. Va por una función acotada (mig 077) que valida que él haya hecho
       // esa visita y que solo escribe `guardado_lugar`. Los demás roles siguen por el camino
       // de siempre.
-      const errGuardar = profile.role === "VISITADOR"
+      const errGuardar = profile.role === "VISITADOR" || comoVisitador
         ? (await supabase.rpc("registrar_guardado_visitador", { p_contrato_id: contratoId, p_datos: datos })).error?.message ?? null
         : (await registrarGuardadoMoto(contratoId, datos, profile.id)).error;
       if (errGuardar) { setError("Error al guardar: " + errGuardar); return; }

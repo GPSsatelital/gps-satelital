@@ -83,6 +83,8 @@ export type Contrato = {
   ubicacion_moto_validada_por?: string | null;
   ubicacion_moto_validada_fecha?: string | null;
   ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
+  // Cuándo quedó confirmado dónde duerme la moto (mig 225, D-094): lo escribe la base una sola vez.
+  ubicacion_confirmada_en?: string | null;
   // Lugar donde SÍ se guarda la moto, con su propio GPS (Fase 3, se llena yendo al sitio).
   guardado_lugar?: {
     lat?: number; lng?: number; direccion?: string; condiciones?: string;

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import { useVisitas } from "../hooks/useVisitas";
 import { useContratos, type Contrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import ModalRegistrarGuardado from "./ModalRegistrarGuardado";
+import { DESDE_CONFIRMA_VISITADOR } from "../utils/nominaCobradores";
 
 // Fase 2 — validación post-entrega de dónde se guarda la moto, en el detalle del contrato.
 // La tarea persiste (alerta) hasta que se marca. La app no tiene el GPS del vehículo: se compara
@@ -26,6 +28,22 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
   const [procesando, setProcesando] = useState(false);
   const [modalReg, setModalReg] = useState(false);
 
+  // 🔴 D-094 (19-nov-2026): en las motos entregadas desde el 19-nov lo confirma QUIEN HIZO LA VISITA,
+  // en su módulo «📍 Confirmar ubicación». Al supervisor de la moto no le sale la tarea ni los botones;
+  // ve el dato del sitio cuando ya quedó confirmado (le sirve si tiene que recogerla). ADMIN y
+  // ADMIN_PRINCIPAL siguen viendo el recuadro como siempre. Si la entrega no tiene visita con quién
+  // la hizo, sigue siendo del supervisor: eso lo dice la base (`confirma_el_visitador`, mig 225).
+  const esJefe = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const entregaNueva = !!contrato.fecha_entrega && contrato.fecha_entrega.slice(0, 10) >= DESDE_CONFIRMA_VISITADOR;
+  const [delVisitador, setDelVisitador] = useState<boolean | null>(entregaNueva && !esJefe ? null : false);
+  useEffect(() => {
+    if (!entregaNueva || esJefe) { setDelVisitador(false); return; }
+    let vivo = true;
+    supabase.rpc("confirma_el_visitador", { p_contrato: contrato.id })
+      .then(({ data, error }) => { if (vivo) setDelVisitador(!error && data === true); });
+    return () => { vivo = false; };
+  }, [contrato.id, entregaNueva, esJefe]);
+
   const puedeValidar = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL"
     || profile?.role === "SUBADMIN";
   // Solo para contratos activos (entregados) y para quien revisa el GPS.
@@ -35,6 +53,9 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
   // marcaron true solo para no inundar de alertas, nunca pasaron por este flujo.
   if (contrato.ubicacion_moto_validada == null) return null;
   if (contrato.ubicacion_moto_validada === true && !contrato.ubicacion_moto_validada_fecha) return null;
+  if (delVisitador === null) return null;
+  // La confirma quien visitó: mientras no quede confirmada, al supervisor no le sale nada.
+  if (delVisitador && !contrato.ubicacion_confirmada_en) return null;
 
   // Declaración de la visita del cliente (la más reciente).
   const visita = visitas
@@ -78,7 +99,9 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
           </>
         )}
         {declaro === "No" && <>El cliente declaró que la guarda en: <strong>{dondeDeclarado || "otro lugar (sin especificar)"}</strong>.</>}
-        {!declaro && <span style={{ color: "var(--muted)" }}>Sin declaración de guardado en la visita — verifica en el GPS dónde duerme la moto.</span>}
+        {!declaro && (delVisitador
+          ? <span style={{ color: "var(--muted)" }}>Lo confirmó quien hizo la visita{contrato.ubicacion_moto_resultado === "coincide" ? ": duerme donde dijo el cliente." : "."}</span>
+          : <span style={{ color: "var(--muted)" }}>Sin declaración de guardado en la visita — verifica en el GPS dónde duerme la moto.</span>)}
       </div>
 
       {/* Lugar de guardado registrado (Fase 3), si existe */}

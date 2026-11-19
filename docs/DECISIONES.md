@@ -1598,3 +1598,27 @@ mejorando»). Va en Reportes → Equipo → «Evaluación», con la cuenta en la
    ZALA**: son internas del equipo, no van a la vitrina `zala` y ZALA nunca habla de ellas. El dueño: «que tiene que
    ver zala con eso». Vale para toda cifra interna del equipo (supervisores, nómina): la REGLA DE LA VITRINA es para lo
    que se le dice a un cliente.
+
+### D-094 · 19-nov-2026 · Dónde duerme la moto lo confirma quien hizo la visita, y de eso depende que le paguen la visita
+**De dónde sale:** la hoja a mano que mandó el dueño el 19-nov: «Módulo de confirmar visitas (si no, no se paga)».
+Hasta ahora la validación la hacía el supervisor que maneja la moto (mig 145, 5 por día), aunque la visita la hubiera
+hecho otro, y la visita se pagaba igual en la semana de la entrega.
+**Qué se decidió (pregunta por pregunta con el dueño):**
+1. Confirmar es mirar en el GPS dónde durmió la moto y marcar ✓ (coincide con lo que dijo el cliente) o ✗. Con ✗,
+   quien visitó va al sitio real y lo documenta (GPS, foto, encargado del sitio). Con eso **sí se gana** la visita.
+2. La confirma **quien hizo la visita**, sin importar quién maneja la moto para el cobro. Cada uno ve solo las suyas,
+   en un módulo aparte: SEGUIMIENTO → «📍 Confirmar ubicación». ADMIN_PRINCIPAL y ADMIN ven las de todos, para
+   revisar que se hagan bien y que lo que anotan sea verdad.
+3. La visita ($40.000) se paga **en la semana en que la confirma**, con la fecha real de la visita en el detalle.
+   Mientras no la confirme, en la nómina le sale en gris cuántas le esperan y cuánto vale.
+4. Rige para las motos **entregadas desde el jueves 19-nov-2026**. Las de antes siguen con el supervisor de la moto,
+   5 por día, y se pagan como siempre («Nuevas al que visitó, viejas igual»).
+5. Al supervisor de la moto, en las entregas nuevas, no le sale la tarea ni los botones: ve el dato del sitio cuando
+   ya quedó confirmado («Sin tarea, con el dato»).
+6. Cuando se haga la pizarra de tareas, la confirmación es un paso del papelito «Visita».
+**Cómo quedó:** migración 225 (corrida el 19-nov; antes y después: 234 motos en la cola de los supervisores y 29
+avisos, sin cambios, porque ese día todavía no se había entregado ninguna). La fecha de la confirmación
+(`contratos.ubicacion_confirmada_en`) la escribe la base una sola vez y no se puede mover ni borrar a mano: si se
+moviera de semana, la visita se pagaría dos veces. Es cifra interna del equipo: no va a ZALA (D-093).
+**Queda abierto:** si el administrador descubre que lo confirmado no era verdad, qué pasa con el pago (hoy la visita
+sigue pagada).

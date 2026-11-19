@@ -210,6 +210,7 @@ migración. ZALA: no lee esta tabla (los estados salen de ella misma).
 | `resultado` | `Aprobado` / `Rechazado` / `Repetir` / vacío | Lo que dijo el admin |
 | `asignada_a` | A qué visitador / subadmin le tocó | — |
 | `ubicacion_moto_resultado` (mig 060) | `coincide` / `no_coincide` | Si la moto se guarda donde dijo |
+| `contratos.ubicacion_confirmada_en` (mig 225, D-094) | fecha y hora, o vacío | Cuándo quedó confirmado dónde duerme la moto, en las entregas desde el 19-nov-2026: al marcar ✓, o al documentar el sitio real después de un ✗. La confirma quien hizo la visita, y de esta fecha sale la semana en que se le paga. La escribe la base una sola vez |
 
 ZALA: no.
 

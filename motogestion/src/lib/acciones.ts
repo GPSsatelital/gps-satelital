@@ -149,6 +149,8 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion", "rodar_tiempo"],
   // El visitador no aprueba, no cobra y no liquida: solo registra la visita que le asignaron.
   VISITADOR: [],
+  // D-095: lo que haga se le habilita moto por moto cuando un supervisor lo pida, nunca una acción general.
+  AUXILIAR: [],
   MECANICO: [],
   SOCIO: [],
 };
@@ -157,6 +159,8 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
 // la función SQL puede_accion() de la migración 048, para que frontend y BD coincidan.
 export function calcularPuede(role: Role, acciones: AccionesUsuario | null | undefined, accion: string): boolean {
   if (role === "ADMIN_PRINCIPAL") return true;
+  // Antes de los ajustes por persona, como en puede_accion() de la mig 226: uno viejo no le sirve.
+  if (role === "AUXILIAR") return false;
   const ov = acciones?.[accion];
   if (ov === "permitir") return true;
   if (ov === "bloquear") return false;

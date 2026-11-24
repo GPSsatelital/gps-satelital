@@ -305,6 +305,11 @@ export type ContratoNomina = ContratoCiclo & {
   ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
   /** Cuándo quedó confirmado dónde duerme la moto (mig 225): de ahí sale la semana de la visita (D-094). */
   ubicacion_confirmada_en?: string | null;
+  /** Quién marcó ✓ o ✗. Si no es quien hizo la visita (la del auxiliar la marca el supervisor, D-095),
+   *  el renglón lo nombra: la plata es de uno y la confirmación de otro. */
+  ubicacion_moto_validada_por?: string | null;
+  /** El sitio real que se documentó después de un ✗: `por` es quién fue al sitio. */
+  guardado_lugar?: { por?: string } | null;
   id: string;
   cliente_id: string;
   moto_id: string | null;
@@ -911,6 +916,11 @@ export function nominaSemanaDetallada(opts: {
   /** Quién trajo a cada cliente — $30.000 a esa persona al entregarse la moto (ver VALOR_REFERIDO). */
   referidos?: ReferidoNomina[];
   /**
+   * Los nombres del equipo, para decir en el renglón de la visita quién la confirmó cuando no es
+   * quien la hizo (D-095). Quien no esté acá se nombra como «la administración».
+   */
+  nombresPorId?: Map<string, string>;
+  /**
    * Las rodadas con su fecha (ver RodadaNomina). Sin ellas no se puede saber cómo estaba cada
    * semana el día en que se cobró, y se queda la cuenta de antes: sin correr las semanas.
    */
@@ -1352,10 +1362,22 @@ export function nominaSemanaDetallada(opts: {
         continue;
       }
       pagaEl = diaColombia(c.ubicacion_confirmada_en);
+      // Si la marcó otro (la del auxiliar la marca el supervisor de la moto, D-095), se dice quién:
+      // siempre se sabe de dónde viene cada paso.
+      const nombre = (id: string, siNo: string) => (opts.nombresPorId?.get(id) ?? siNo).toUpperCase();
+      const marco = c.ubicacion_moto_validada_por && c.ubicacion_moto_validada_por !== v.realizada_por
+        ? nombre(c.ubicacion_moto_validada_por, "la administración") : null;
+      const fue = c.guardado_lugar?.por;
+      const quienFue = !fue ? "se"
+        : fue === v.realizada_por ? nombre(fue, "quien hizo la visita") : nombre(fue, "otra persona");
       porque = `Visita del ${fechaCorta(v.fecha)}, entregada el ${fechaCorta(entrega)}: `
         + (c.ubicacion_moto_resultado === "no_coincide"
-            ? `documentó el sitio real el ${fechaCorta(pagaEl)}`
-            : `confirmó dónde duerme la moto el ${fechaCorta(pagaEl)}`);
+            ? (marco
+                ? `${marco} marcó que no duerme ahí y ${quienFue} documentó el sitio real el ${fechaCorta(pagaEl)}`
+                : `documentó el sitio real el ${fechaCorta(pagaEl)}`)
+            : (marco
+                ? `${marco} confirmó dónde duerme la moto el ${fechaCorta(pagaEl)}`
+                : `confirmó dónde duerme la moto el ${fechaCorta(pagaEl)}`));
     } else if (c.ubicacion_moto_resultado === "no_coincide") {
       // "Se paga por dejar el dato CIERTO": si la validación dice que la moto NO duerme ahí, no vale.
       continue;

@@ -22,7 +22,24 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN_PRINCIPAL", label: "Administrador Principal" },
   { value: "SOCIO", label: "Socio (solo lectura)" },
   { value: "VISITADOR", label: "Visitador (solo visitas domiciliarias)" },
+  { value: "AUXILIAR", label: "Auxiliar administrativo (mira motos, contratos y taller; hace visitas)" },
 ];
+
+// El auxiliar ve siempre lo mismo (D-095): sus casillas de pantallas y de acciones no harían nada,
+// así que en vez de ellas se dice qué ve. La app ignora su lista y la base le niega toda acción.
+function NotaAuxiliar() {
+  return (
+    <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 12, padding: 12, fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>Ve siempre lo mismo:</div>
+      <div>🏍️ Motos · 📄 Contratos · 🔧 Taller — solo para mirar, sin plata ni totales.</div>
+      <div>🏠 Mis visitas — las visitas que se le asignen.</div>
+      <div>📍 Confirmar ubicación — ve las suyas, pero las confirma el supervisor de cada moto en el GPS; si no coincide, él va al sitio real.</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+        No tiene permisos de acción. Lo demás se le habilitará moto por moto cuando un supervisor lo pida.
+      </div>
+    </div>
+  );
+}
 
 function roleLabel(role: Role) {
   return ROLE_OPTIONS.find(r => r.value === role)?.label ?? role;
@@ -37,6 +54,7 @@ function roleBadge(role: Role) {
     SUBADMIN: { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
     SOCIO: { bg: "var(--soft)", color: "var(--muted2)" },
     VISITADOR: { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
+    AUXILIAR: { bg: "var(--soft)", color: "var(--text)" },
   };
   return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
@@ -122,7 +140,7 @@ export default function UsuariosView() {
   // ── Editar ──
   const [editando, setEditando] = useState<PerfilUsuario | null>(null);
 
-  const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "VISITADOR", "SOCIO", "MECANICO"];
+  const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "VISITADOR", "AUXILIAR", "SOCIO", "MECANICO"];
 
   async function cargarUsuarios(reintento = false) {
     const { error, data } = await invocar({ action: "list" });
@@ -228,6 +246,8 @@ export default function UsuariosView() {
                 <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
               </div>
+            ) : role === "AUXILIAR" ? (
+              <NotaAuxiliar />
             ) : (
               <div>
                 <div style={labelStyle}>Accesos a módulos</div>
@@ -449,7 +469,9 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   }
 
   const isSocio = role === "SOCIO";
-  const llevaCedula = role === "SUBADMIN" || role === "VISITADOR";
+  const esAuxiliar = role === "AUXILIAR";
+  // El AUXILIAR también sale en esa lista (nombres_subadmins, mig 226).
+  const llevaCedula = role === "SUBADMIN" || role === "VISITADOR" || esAuxiliar;
 
   function cambiarRole(r: Role) {
     setRole(r);
@@ -478,7 +500,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       id: usuario.id, nombre: nombre.trim(), email: email.trim(), role,
       whatsapp: whatsapp.replace(/\D/g, ""),
       ...(isSocio ? { grupo } : {}),
-      permisos: isSocio ? [] : accesos,
+      permisos: isSocio ? [] : esAuxiliar ? ACCESOS_SUGERIDOS.AUXILIAR : accesos,
     });
     if (error) { setGuardando(false); setError(error); return; }
     // Guardar los overrides de acciones directo (SOCIO no usa acciones).
@@ -487,7 +509,8 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       // así se guarda aunque la Edge Function aún no conozca el campo. Solo dígitos, con el 57.
       const d = whatsapp.replace(/\D/g, "");
       const wa = d.length === 10 ? "57" + d : d || null;
-      const { error: errAcc } = await supabase.from("profiles").update({ acciones: accionesOv, whatsapp: wa }).eq("id", usuario.id);
+      // Al auxiliar se le borran los permisos que traía de su rol anterior: no le sirven (D-095).
+      const { error: errAcc } = await supabase.from("profiles").update({ acciones: esAuxiliar ? {} : accionesOv, whatsapp: wa }).eq("id", usuario.id);
       if (errAcc) { setGuardando(false); setError("Usuario guardado, pero falló guardar los permisos de acciones o el WhatsApp: " + errAcc.message); return; }
     }
     if (llevaCedula && ced !== cedulaGuardada) {
@@ -560,6 +583,11 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
             <div>
               <div style={labelStyle}>Grupo / portafolio</div>
               <SelectGrupo style={inputStyle} value={grupo} onChange={setGrupo} />
+            </div>
+          ) : esAuxiliar ? (
+            <div>
+              <div style={labelStyle}>Permisos</div>
+              <NotaAuxiliar />
             </div>
           ) : (
             <div>

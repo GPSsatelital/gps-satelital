@@ -27,6 +27,7 @@ const ROL_CORTO: Record<string, string> = {
   SECRETARIA: "Secretaria",
   MECANICO: "Mecánico",
   VISITADOR: "Visitador",
+  AUXILIAR: "Auxiliar",
   ANALISTA: "Analista",
   SOCIO: "Socio",
 };

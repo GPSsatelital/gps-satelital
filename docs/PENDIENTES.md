@@ -53,7 +53,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - [ ] 🧑 **¿Se sostiene la D-077 (recoger con 2 días en mora)?** Medida el 13-nov: la lista del jueves pasaría de unas
 >   63 motos a unas 167 y la del viernes de 51 a 132; el día más pesado pasa del sábado al jueves. Es aproximado: no
 >   aplica la regla de la moto guardada con prestada.
-> - [ ] 🧑 **JOHAN DAVID ROJAS: qué hace.** Es SUBADMIN con 0 motos. Va junto con «Usuario para Johan» (P3).
+> - [x] 🧑 **JOHAN DAVID ROJAS: qué hace.** Es SUBADMIN con 0 motos. Va junto con «Usuario para Johan» (P3).
+>   *(24-nov: decidido, será «auxiliar administrativo», D-095; lo que falta está en el ítem de P3.)*
 > - [ ] 🧑 **Las motos sin supervisor:** 15 retenidas y 2 en taller deben $41.746.000 (foto del 12-nov) y nadie responde
 >   por ellas. Decidir a quién se asignan.
 > - [x] 🧑💻 **La plantilla de WhatsApp que le falta a WILINTON:** 55 mensajes suyos quedaron en `mensaje_estado='fallo'`
@@ -1446,6 +1447,84 @@ les falta un documento».
   **Motos** — de qué grupo es cada moto · **Contratos** — cuándo empezó y cuándo termina, para las entregas de
   repuestos · **Taller** — sacar las motos que están en taller y por liquidación · **Inmovilizaciones** — solo ver.
   Al hacerlo, confirmar que son sus accesos.)*
+  🔨 *(23-nov, el dueño lo arranca: será **asistente administrativo**, con pocas secciones al inicio, y su propio
+  usuario es para que **todo lo que haga quede registrado**. Funciones: (1) **entregar las motos que salen del
+  taller**, pero solo las que un supervisor le habilite o le pida: en Motos le salen únicamente esas; (2)
+  **referidos** como siempre; (3) **visitas** que se le asignen, y la visita la confirma (o le deja confirmarla) el
+  supervisor. Pidió recomendaciones de otras funciones. Medido el 23-nov en el código: hoy es SUBADMIN con 0 motos, y
+  un SUBADMIN con accesos recortados solo se recorta en la pantalla, no en la base (por eso el VISITADOR nació como rol
+  aparte, mig 076); la única tabla de rastro es `contratos_auditoria` (ediciones de contrato); ya existe el módulo
+  «Tarjetas y Llaves» (préstamo y control).)*
+  🔨 *(24-nov, decidido por el dueño: (a) **rol nuevo, «auxiliar administrativo»**, no un SUBADMIN recortado; (b) de
+  Inmovilizaciones ve **solo las que le digan o le dejen ver**; (c) **también recibe motos**, pero solo le aparece la
+  que le asigne el supervisor de esa moto, el ADMIN o el ADMIN_PRINCIPAL; (d) el acta de entrega queda para cuando se
+  haga bien el taller (ítem siguiente); (e) **le pueden pedir 3 entregas**: la que sale del taller a su cliente,
+  la retenida que ya pagó y la prestada de reemplazo (la de cliente nuevo la hace solo el admin, sin Johan: el dueño
+  lo corrigió el 24-nov); (f) **él no hace convenios ni rueda el
+  tiempo**: eso lo deja listo antes el supervisor, que después la entrega él mismo o se la asigna al auxiliar, para que
+  la entregue desde SU usuario y no tenga que usar el del supervisor; (g) **su visita la confirma el supervisor de
+  esa moto**, con su propio acceso: a Johan le sale «te falta confirmar la ABC12D · la tiene asignada BRANDON» para
+  que se la pida o se cuadren (por ratificar: se le paga a Johan en la semana en que el supervisor confirme). Quedan
+  sin decidir: la lista diaria de lo que hizo. Tarjetas y llaves: **no, por ahora** (24-nov). (i) **Motos: le salen
+  todas**, como lista con buscador, **sin totales ni cantidades**, solo para ver cierta información; la opción de hacer
+  algo con una moto (entregar, recibir) se le habilita solo cuando un supervisor se la pide. El dueño confirmó el
+  resumen completo el 24-nov. Memoria `usuario-johan-asistente`.)*
+  🔨 *(24-nov, fase 1 construida, sin publicar: rol `AUXILIAR` en la pantalla y en la mig 226 (escrita, SIN
+  correr). Ve solo 🏍️ Motos (todas menos vendidas: placa, grupo, marca, modelo, color y estado), 📄 Contratos (activos
+  y suspendidos: placa, cliente, inicio y fin) y 🔧 Taller (órdenes abiertas, días y «Por liquidación»), sin plata, sin
+  totales y sin botones; más 🏠 Mis visitas, 📍 Confirmar ubicación (solo las suyas) y su cuenta. Lo decidió el
+  dueño el 24-nov: Confirmar ubicación sí, con solo las suyas; en Motos el estado y no la ubicación física, que está
+  desactualizada (ítem siguiente). La 226 lo deja fuera de todas las tablas de `public` y cierra de paso el hueco
+  de que cualquiera se marcara permisos de acción a sí mismo. tsc, build y pruebas en verde. **Falta, en orden:**
+  (1) correr la 226 y comparar el resultado; (2) mirar las 3 listas con datos reales a 375 px; (3) publicar
+  `manage-users`, que no acepta el rol nuevo hasta entonces (con permiso del dueño); (4) el dueño le cambia el rol
+  en Usuarios; (5) probar con la sesión de Johan y ver que la foto de su primera visita real suba; (6) publicar.
+  Las fases siguientes (entregar o recibir una moto que le habilite un supervisor, Inmovilizaciones «las que le
+  dejen ver», referidos) quedan para después.)*
+  🔨 *(24-nov, **cambio del dueño sobre lo de arriba**: en «📍 Confirmar ubicación» Johan **no marca ✓/✗**; sus
+  visitas las confirma **el supervisor de esa moto** (el ADMIN o el ADMIN_PRINCIPAL si la moto no tiene supervisor),
+  porque «siempre debe tener la ayuda de alguien que tenga acceso a verificar el GPS de esa moto». Johan ve quién la
+  confirma y hace cuántos días espera, y tiene «📲 Pedírsela a BRANDON» (abre su WhatsApp con el mensaje escrito).
+  El supervisor las ve **en un recuadro aparte** («De JOHAN · te toca confirmarlas · se le pagan a él»), separadas
+  de las suyas; su lista vieja de 5 por día no se toca. ✓ → a Johan se le paga esa semana; ✗ → se le devuelve a
+  Johan para que vaya al sitio real y lo documente. «¿Seguro?» en cada botón; el número rojo de Johan cuenta solo
+  lo que él tiene que hacer; el jefe ve cuántas de Johan espera cada supervisor; la nómina nombra a quien marcó.
+  Hecho en la 226 (puntos 9 y 10, con su prueba sobre una entrega real) y en la pantalla; tsc, build y 1.318
+  pruebas en verde; mirado a 375 px con la vista del jefe. **El paso (1) de arriba es correr ESTA 226** (la copia
+  que tenía el dueño en el portapapeles antes de las 4 p. m. del 24-nov es vieja). Ver D-095 (ajuste del 24-nov).)*
+- [ ] 💻 **«Actualizar lugar» borra el sitio anterior.** Visto el 24-nov: al volver a documentar dónde duerme una
+  moto, `contratos.guardado_lugar` se reemplaza entero y el sitio anterior (con su GPS, quién lo puso y cuándo) se
+  pierde. Va contra la regla de «saber siempre de dónde viene». Por decidir con el dueño si se guarda la historia
+  de sitios y dónde se muestra; no tocar sin plan.
+- [ ] 💻 **La ubicación física de las motos está desactualizada.** Medido el 24-nov: 201 motos «Asignada» (con
+  cliente, en la calle) dicen que están en «bodega», además de otras combinaciones que no cuadran entre el estado y
+  `motos.ubicacion_fisica`. Por eso al auxiliar se le muestra el estado y no la ubicación. ⚠️ **Por decidir:** si la
+  ubicación se pone al día sola cuando cambia el estado (entrega, recolección, taller), se limpia una vez a mano o se
+  deja de mostrar; y quién la mantiene. Antes de tocarla, buscar en todo `src/` dónde se muestra y quién la escribe.
+- [ ] 💻 **Las fotos del VISITADOR se perderían sin avisar.** Encontrado el 24-nov al revisar la 226: la foto de la
+  visita y la del lugar de guardado se suben con «subir o reemplazar» (`upsert: true`), que según la documentación de
+  Supabase pide también permiso de abrir y de cambiar el archivo, y las migs 161 y 162 le quitan esos dos permisos al
+  VISITADOR. En la visita, si la foto falla la visita se guarda igual sin foto y nadie se entera (en el lugar de
+  guardado sí sale el error y no se guarda). Hoy no hace daño:
+  hay un solo VISITADOR (JULIO CÉSAR CORREA OSPINO) con 0 visitas. Para el auxiliar ya va resuelto en la 226 (abre y
+  cambia solo lo que él subió a `visitas/` y `guardados/`). **Arreglo propuesto, sin aprobar:** darle al VISITADOR la
+  misma regla, o subir sin `upsert`; y en la visita, avisar si la foto no subió en vez de seguir callada.
+- [ ] 💻 **Quitarle al ADMIN registrar pagos en efectivo como si fuera la caja.** Pedido del dueño el 24-nov («vamos a
+  quitar que el admin pueda recibir o ingresar pagos en efectivo como si caja lo recibiera»). Hoy SÍ puede: la acción
+  `registrar_efectivo` está en el default del ADMIN en la pantalla (`lib/acciones.ts`, puesta el 15-sep: «Sergio sí
+  puede») y en la base (`_acciones_default()`, mig 140), y la cuida el candado `trg_enforce_registrar_efectivo` (migs
+  066 y 067). Para quitarla de verdad hay que tocar las dos capas y revisar si algún ADMIN la tiene puesta a mano en
+  su lista de acciones. Contradice lo que dice CLAUDE.md («ADMIN… NO registra efectivo»), que el código nunca cumplió.
+  ⚠️ **Por explicar cuando toque:** si también se le quita «aplicar saldo a favor» (va junto en el mismo default) y
+  qué pasa con el cobro en campo, que el ADMIN sí hace y la SECRETARIA confirma.
+- [ ] 💻 **Hacer o pulir todo el módulo de taller.** Pedido del dueño el 23-nov: «hay que hacer o pulir todo el tema
+  de taller». Ya se sabe de: motos «en taller» que están en la calle y avisos de taller que no cierran (memoria
+  `prestamo-dias-de-mas-y-taller-fantasma`), el trabajo y su cobro (memoria `taller-trabajo-y-cobro`), la DQF56I sin
+  devolver (P2), y que la tabla `taller` y el INSERT/UPDATE de `motos` siguen abiertos a cualquier usuario con sesión
+  (CLAUDE.md, RLS «pendiente deferido»). Se cruza con la entrega de motos de Johan, con el documento de garantía y con
+  el acta de entrega y recibo (D-066). ⚠️ **Por explicar cuando toque:** qué falla hoy en el día a día del taller y
+  qué hay que hacer nuevo. *(24-nov, el dueño: el acta de entrega y recibo (D-066) se publica cuando el taller quede
+  bien hecho, junto con él.)*
 - [ ] 💻 **El formato de «los más buscados».** Una lista de los más buscados, o sea, a quiénes hay que hacerles
   alguna gestión. ⚠️ **Por definir:** ¿es un papel para imprimir o una pantalla? ¿Quién entra a la lista (mora,
   recolección, moto sin ubicar) y qué datos lleva cada uno?

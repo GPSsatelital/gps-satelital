@@ -50,6 +50,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN_PRINCIPAL",label: "Administrador Principal" },
   { value: "SOCIO",          label: "Socio (solo lectura)" },
   { value: "VISITADOR",      label: "Visitador (solo visitas domiciliarias)" },
+  { value: "AUXILIAR",       label: "Auxiliar administrativo (mira motos, contratos y taller; hace visitas)" },
 ];
 
 function roleLabel(role: Role) {
@@ -65,6 +66,7 @@ function roleBadge(role: Role) {
     SUBADMIN:        { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
     SOCIO:           { bg: "var(--soft)", color: "var(--muted2)" },
     VISITADOR:       { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
+    AUXILIAR:        { bg: "var(--soft)", color: "var(--text)" },
   };
   return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
@@ -232,6 +234,7 @@ const ROLE_LABEL: Record<string, string> = {
   MECANICO: "Mecánico",
   SOCIO: "Socio",
   VISITADOR: "Visitador",
+  AUXILIAR: "Auxiliar administrativo",
 };
 
 // ── Vista principal ────────────────────────────────────────────────────────────

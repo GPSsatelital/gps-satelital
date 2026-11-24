@@ -13,7 +13,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ROLES_VALIDOS = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "VISITADOR"];
+// AUXILIAR: auxiliar administrativo (D-095). La base lo acepta desde la mig 226.
+const ROLES_VALIDOS = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO", "VISITADOR", "AUXILIAR"];
 // Los grupos ya no son una lista fija: viven en la tabla `grupos` (mig 217) y los crea el dueño.
 // La llave de profiles.grupo ya impide un grupo que no existe; esto es para dar un mensaje claro.
 // Un socio nuevo solo va a un grupo prendido; al editar uno, vale también el grupo que ya tenía.

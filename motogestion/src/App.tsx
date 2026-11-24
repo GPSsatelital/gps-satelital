@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
 import { BackNavContext } from "./contexts/BackNav";
 import { useSubadminScope } from "./hooks/useSubadminScope";
-import { MODULOS_SIEMPRE } from "./lib/modulos";
+import { MODULOS_SIEMPRE, VISTAS_AUXILIAR } from "./lib/modulos";
 import { instalarFiltroLapiz } from "./utils/filtroLapiz";
 import AvisoActualizacion from "./components/AvisoActualizacion";
 import BusquedaGlobal from "./components/BusquedaGlobal";
@@ -15,7 +15,7 @@ import Login from "./pages/Login";
 import DashboardView from "./pages/DashboardView";
 import CampanaAlertas from "./components/CampanaAlertas";
 import { nombreSubadminCacheado } from "./hooks/useSubadmins";
-import { useConfirmacionesUbicacion } from "./hooks/useConfirmacionesUbicacion";
+import { useConfirmacionesUbicacion, cuentaDelMenu } from "./hooks/useConfirmacionesUbicacion";
 // Vistas cargadas bajo demanda (code-splitting): el arranque solo baja Login + Dashboard,
 // las demás pantallas se descargan al navegar a ellas.
 const MotosView = lazy(() => import("./pages/MotosView"));
@@ -41,6 +41,7 @@ const FichaMotoView = lazy(() => import("./pages/FichaMotoView"));
 const HistorialPagosView = lazy(() => import("./pages/HistorialPagosView"));
 const TarjetasLlavesView = lazy(() => import("./pages/TarjetasLlavesView"));
 const ConfirmarUbicacionView = lazy(() => import("./pages/ConfirmarUbicacionView"));
+const AuxiliarListasView = lazy(() => import("./pages/AuxiliarListasView"));
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
@@ -183,7 +184,7 @@ function Cuenta({ n }: { n: number }) {
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
 function Sidebar({
-  ctx, navigate, puedeVer, collapsed, onCollapse, cuentas,
+  ctx, navigate, puedeVer, collapsed, onCollapse, cuentas, sinSubmenus,
 }: {
   ctx: NavContext;
   navigate: (v: ViewKey, f?: string) => void;
@@ -192,6 +193,8 @@ function Sidebar({
   onCollapse: () => void;
   /** Lo que le falta a uno en un módulo, junto a su nombre: «📍 Confirmar ubicación  2». */
   cuentas?: Partial<Record<ViewKey, number>>;
+  /** El auxiliar (D-095): sus listas no tienen esos filtros, así que no se le muestran. */
+  sinSubmenus?: boolean;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const o: Record<string, boolean> = {};
@@ -213,7 +216,7 @@ function Sidebar({
   });
 
   const groups = SIDE_GROUPS
-    .map(g => ({ ...g, items: g.items.filter(i => puedeVer(i.key)) }))
+    .map(g => ({ ...g, items: g.items.filter(i => puedeVer(i.key)).map(i => sinSubmenus ? { ...i, sub: undefined } : i) }))
     .filter(g => g.items.length > 0);
 
   return (
@@ -240,13 +243,15 @@ function Sidebar({
 
       {/* Nav */}
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
-        {/* Dashboard */}
-        <button onClick={() => navigate("dashboard")} style={btn(ctx.view === "dashboard")} title={collapsed ? "Panel" : undefined}>
-          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 16 }}>🏠</span>
-            {!collapsed && "Panel General"}
-          </span>
-        </button>
+        {/* Dashboard (todos menos el auxiliar) */}
+        {puedeVer("dashboard") && (
+          <button onClick={() => navigate("dashboard")} style={btn(ctx.view === "dashboard")} title={collapsed ? "Panel" : undefined}>
+            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 16 }}>🏠</span>
+              {!collapsed && "Panel General"}
+            </span>
+          </button>
+        )}
 
         {groups.map(g => (
           <div key={g.label} style={{ marginTop: 16 }}>
@@ -489,6 +494,11 @@ function Shell() {
   const roleActual = profile?.role ?? "SECRETARIA";
   const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
   const esMecanico = roleActual === "MECANICO";
+  // El auxiliar administrativo (D-095) no tiene Panel: arranca en Motos, que es lo suyo.
+  const esAuxiliar = roleActual === "AUXILIAR";
+  const inicio: ViewKey = esAuxiliar ? "motos" : "dashboard";
+  const inicioRef = useRef<ViewKey>(inicio);
+  inicioRef.current = inicio;
 
   const scope = useSubadminScope(profile, motos, contratos);
   // Datos filtrados por scope para la búsqueda global (SUBADMIN solo ve lo suyo)
@@ -496,10 +506,12 @@ function Shell() {
   const motosScope = scope.filtrarMotos(motos);
   const contratosScope = scope.filtrarContratos(contratos);
 
-  // El número del menú en «📍 Confirmar ubicación» (D-094): lo que le falta confirmar a UNO de sus
-  // propias visitas. Al jefe no le cuenta las de los demás: esas las revisa adentro.
-  const { filas: confirmaciones } = useConfirmacionesUbicacion(roleActual === "SUBADMIN" || esAdmin);
-  const pendientesMas = confirmaciones.filter(f => !f.confirmada_en && f.visitador_id === profile?.id).length;
+  // El número del menú en «📍 Confirmar ubicación» (D-094): solo lo que esa persona puede hacer ella
+  // misma: confirmar sus visitas, o ir al sitio si salió ✗. Al supervisor le suma las visitas del
+  // auxiliar que le toca confirmar; al auxiliar no le cuenta las que esperan al supervisor (D-095).
+  // Al jefe no le cuenta las de los demás: esas las revisa adentro.
+  const { filas: confirmaciones } = useConfirmacionesUbicacion(roleActual === "SUBADMIN" || esAdmin || esAuxiliar);
+  const pendientesMas = cuentaDelMenu(confirmaciones, profile?.id, esAdmin);
   const cuentasMenu: Partial<Record<ViewKey, number>> = pendientesMas > 0 ? { confirmar_ubicacion: pendientesMas } : {};
 
   // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
@@ -524,6 +536,9 @@ function Shell() {
 
   // ¿Puede el usuario abrir este módulo? Accesos a medida mandan; si no hay, default por rol.
   function puedeVer(view: ViewKey): boolean {
+    // Antes que todo, incluso que MODULOS_SIEMPRE: el auxiliar no ve el Panel, ni las fichas, ni
+    // «Mi día», y su lista de accesos no cuenta (llega de SUBADMIN con una vieja). D-095.
+    if (esAuxiliar) return VISTAS_AUXILIAR.includes(view);
     if (MODULOS_SIEMPRE.includes(view)) return true;
     // Usuarios & Roles: exclusivo de ADMIN_PRINCIPAL, sin excepción — ningún acceso a
     // medida puede otorgarlo a otro rol (evita que alguien se autoconceda gestión de cuentas).
@@ -561,8 +576,9 @@ function Shell() {
   // (evita quedar en una pantalla en blanco por una vista guardada que el rol no puede ver).
   useEffect(() => {
     if (!profile) return;
-    if (ctx.view !== "dashboard" && ctx.view !== "configuracion" && !puedeVer(ctx.view)) {
-      setCtx({ view: "dashboard", filter: "" });
+    // Panel y Configuración los ven todos menos el auxiliar, que vuelve a su inicio (Motos).
+    if (!puedeVer(ctx.view)) {
+      setCtx({ view: inicio, filter: "" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
@@ -603,8 +619,8 @@ function Shell() {
         return;
       }
       contentScrollPos.current = 0;
-      // 3) en la raíz: ir al panel si no estamos ahí (si ya, no hay a dónde volver).
-      if (ctxRef.current.view !== "dashboard") { idVistaRef.current = ++idContador.current; setCtx({ view: "dashboard", filter: "" }); }
+      // 3) en la raíz: ir al panel (al auxiliar, a Motos) si no estamos ahí (si ya, no hay a dónde volver).
+      if (ctxRef.current.view !== inicioRef.current) { idVistaRef.current = ++idContador.current; setCtx({ view: inicioRef.current, filter: "" }); }
     }
     // Armar la trampa una vez al montar.
     window.history.replaceState({ inApp: true }, "");
@@ -675,12 +691,13 @@ function Shell() {
     return (
       <>
         <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
-        {c.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
-        {c.view === "mi_dia"        && <MiDiaView onNavigate={navigate} />}
+        {c.view === "dashboard"     && puedeVer("dashboard") && <DashboardView onNavigate={navigate} />}
+        {c.view === "mi_dia"        && puedeVer("mi_dia") && <MiDiaView onNavigate={navigate} />}
         {c.view === "mis_visitas"   && puedeVer("mis_visitas") && <MisVisitasView />}
         {c.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} onNavigate={navigate} />}
-        {c.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} onNavigate={navigate} />}
-        {c.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} />}
+        {/* El auxiliar ve Motos, Contratos y Taller en versión de solo mirar (D-095). */}
+        {c.view === "motos"         && puedeVer("motos") && (esAuxiliar ? <AuxiliarListasView que="motos" /> : <MotosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} onNavigate={navigate} />)}
+        {c.view === "contratos"     && puedeVer("contratos") && (esAuxiliar ? <AuxiliarListasView que="contratos" /> : <ContratosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} />)}
         {c.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={c.filter === "new"} initialFilter={c.filter !== "new" ? c.filter : ""} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
         {c.view === "caja"          && puedeVer("caja") && <CajaView />}
         {c.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
@@ -688,14 +705,14 @@ function Shell() {
         {c.view === "referidos"     && puedeVer("referidos") && <ReferidosView />}
         {c.view === "alertas"       && puedeVer("alertas") && <AlertasView onNavegar={navigate} />}
         {c.view === "inmovilizaciones" && puedeVer("inmovilizaciones") && <InmovilizacionesView onNavigate={navigate} />}
-        {c.view === "taller"        && puedeVer("taller") && <TallerView onNavigate={navigate} />}
+        {c.view === "taller"        && puedeVer("taller") && (esAuxiliar ? <AuxiliarListasView que="taller" /> : <TallerView onNavigate={navigate} />)}
         {c.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
         {c.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
         {c.view === "configuracion"  && <ConfiguracionView />}
         {c.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
         {/* "id|pagos" abre la ficha directo en esa pestaña (Cartera → "Ver semana por semana"). */}
-        {c.view === "ficha_cliente"  && c.filter && <FichaClienteView clienteId={c.filter.split("|")[0]} tabInicial={c.filter.split("|")[1]} onNavigate={navigate} volver={volverDe(c)} />}
-        {c.view === "ficha_moto"     && c.filter && <FichaMotoView motoId={c.filter} onNavigate={navigate} volver={volverDe(c)} />}
+        {c.view === "ficha_cliente"  && c.filter && puedeVer("ficha_cliente") && <FichaClienteView clienteId={c.filter.split("|")[0]} tabInicial={c.filter.split("|")[1]} onNavigate={navigate} volver={volverDe(c)} />}
+        {c.view === "ficha_moto"     && c.filter && puedeVer("ficha_moto") && <FichaMotoView motoId={c.filter} onNavigate={navigate} volver={volverDe(c)} />}
         {c.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
         {c.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}
         {c.view === "confirmar_ubicacion" && puedeVer("confirmar_ubicacion") && <ConfirmarUbicacionView />}
@@ -730,7 +747,7 @@ function Shell() {
   if (isMobile) {
     const bottomTabs = esMecanico
       ? [{ key: "dashboard" as ViewKey, icon: "🏠", label: "Panel" }, { key: "taller" as ViewKey, icon: "🔧", label: "Taller" }]
-      : BOTTOM_TABS.filter(t => t.key === "dashboard" || puedeVer(t.key));
+      : BOTTOM_TABS.filter(t => puedeVer(t.key)); // el Panel lo ven todos menos el auxiliar
 
     return (
       <BackNavContext.Provider value={registerGuard}>
@@ -749,8 +766,9 @@ function Shell() {
             <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>{currentTitle}</div>
             {filterLabel && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
           </div>
-          <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>
-          <CampanaAlertas onNavegar={navigate} />
+          {/* El auxiliar no busca clientes ni recibe alertas de cartera (D-095). */}
+          {!esAuxiliar && <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>}
+          {!esAuxiliar && <CampanaAlertas onNavegar={navigate} />}
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setUserMenuOpen(p => !p)}
@@ -850,7 +868,7 @@ function Shell() {
     <SubadminScopeProvider scope={scope}>
     <div style={{ minHeight: "100vh", display: "flex", fontFamily: "var(--font-ui)", color: "var(--text)" }}>
       <InstallBanner />
-      <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} cuentas={cuentasMenu} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
+      <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} cuentas={cuentasMenu} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} sinSubmenus={esAuxiliar} />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: "100vh" }}>
         {/* Desktop top bar */}
@@ -868,8 +886,8 @@ function Shell() {
             <div style={{ fontSize: 13, color: "var(--muted)" }}>
               {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
             </div>
-            <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>
-            <CampanaAlertas onNavegar={navigate} />
+            {!esAuxiliar && <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>}
+            {!esAuxiliar && <CampanaAlertas onNavegar={navigate} />}
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setUserMenuOpen(p => !p)}

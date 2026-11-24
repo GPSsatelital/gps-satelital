@@ -669,3 +669,20 @@ negocio.
 **Qué lo evita ahora:** antes de preguntar, ver si es una pregunta de su negocio o de mi procedimiento. Si es de mi
 procedimiento, la decido yo con la regla escrita y se la digo en una línea. Quedó como D-093: las cifras internas del
 equipo no van al diccionario.
+
+### 24-nov-2026 · Le di la 226 «lista para correr» y falló en la prueba
+**Lo que dije:** que la 226 estaba completa y coherente, y que no se iba a cancelar por falta de datos.
+**Lo que era verdad:** falló en la línea 58 de la prueba con `record "t" has no field "moto_id"`. En ese bloque `t`
+era la variable de los ciclos y la usé también como nombre de la tabla de taller, y Postgres tomó la variable. Y
+traía una segunda falla que todavía no había salido: la trampa de los claims en `''` al anotar la migración
+(`aplicada_por` los lee como json). **Esa ya estaba anotada en la memoria por la sesión de la 227** («la 226 de
+Johan tiene la misma trampa»), y yo no la leí antes de entregarla. Como todo iba en un `begin … commit`, no quedó
+nada (medido después: ni la función nueva ni la anotación).
+**Por qué me equivoqué:** releí la migración a ojo, y un bloque de prueba solo se revisa de verdad cuando corre:
+Postgres compila cada línea la primera vez que llega a ella. Y no busqué en la memoria lo que otras sesiones
+sabían de esa misma migración.
+**Quién lo cazó:** el editor de Supabase, cuando la corrió el dueño.
+**Qué lo evita ahora:** antes de entregar una migración, (1) buscar su número en la memoria (`grep -l "22[0-9]"`),
+porque otra sesión puede haber anotado algo de ella; (2) pasarle el revisor de choques entre letras de tabla y
+variables de cada bloque (está en la conversación del 24-nov, en `node -e`: se puede volver a escribir en un minuto);
+y (3) si hay pruebas que cambian quién está conectado, poner `request.jwt.claims` en `'{}'` antes de anotar.

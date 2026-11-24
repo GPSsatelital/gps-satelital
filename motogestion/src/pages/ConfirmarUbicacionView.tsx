@@ -3,13 +3,16 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useSubadmins } from "../hooks/useSubadmins";
 import {
-  useConfirmacionesUbicacion, pasoDe, avisarCambio,
-  type ConfirmacionUbicacion, type PasoConfirmacion,
+  useConfirmacionesUbicacion, pasoDe, tareaDe, avisarCambio,
+  type ConfirmacionUbicacion, type PasoConfirmacion, type TareaConfirmacion,
 } from "../hooks/useConfirmacionesUbicacion";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import ModalRegistrarGuardado from "../components/ModalRegistrarGuardado";
 import { card, fmtMoney } from "../styles/shared";
 import { VALOR_VISITA, diaColombia, lunesDe } from "../utils/nominaCobradores";
+import { diasEsperando, textoPedirConfirmacion } from "../utils/confirmacionUbicacion";
+import { normalizarWhatsapp, urlWaMe, nombreCorto } from "../utils/mensajeria";
+import { hoyISO } from "../utils/fecha";
 
 // 📍 CONFIRMAR UBICACIÓN (D-094, regla del dueño, 19-nov-2026).
 //
@@ -17,10 +20,18 @@ import { VALOR_VISITA, diaColombia, lunesDe } from "../utils/nominaCobradores";
 // en el GPS dónde durmió y marca ✓, o ✗ y va a documentar el sitio real. De eso depende que le
 // paguen los $40.000 de la visita, en la semana en que confirma (`nominaCobradores.ts`).
 //
+// La excepción es el auxiliar administrativo (D-095, mig 226): no tiene el GPS de la moto, así que
+// sus visitas las confirma el SUPERVISOR DE ESA MOTO, en un recuadro aparte de las suyas para que no
+// se confundan («se le pagan a él»). Si el supervisor marca ✗, se le devuelve al auxiliar para que
+// vaya al sitio real y lo documente. El auxiliar ve a quién esperar y puede pedírsela por WhatsApp.
+//
 // La misma pantalla se lee distinto según el puesto:
-//   · El que visitó (SUBADMIN): solo las suyas, con los botones.
-//   · ADMIN y ADMIN_PRINCIPAL: las de todos, sin botones, para revisar que se estén haciendo y que
-//     lo que ponen sea cierto. Y abajo, las viejas que le quedan a cada supervisor (mig 145).
+//   · El que visitó (SUBADMIN): las suyas, con los botones; y aparte, las del auxiliar que le toca
+//     confirmar porque la moto es suya.
+//   · El auxiliar: las suyas, sin ✓/✗: quién la confirma, desde cuándo espera, y su botón de pedir.
+//   · ADMIN y ADMIN_PRINCIPAL: las de todos, sin botones (salvo las del auxiliar en una moto sin
+//     supervisor), para revisar que se estén haciendo y que lo que ponen sea cierto. Y abajo, las
+//     viejas que le quedan a cada supervisor (mig 145).
 
 function useIsMobile() {
   const [v, setV] = useState(window.innerWidth < 900);
@@ -86,11 +97,40 @@ export default function ConfirmarUbicacionView() {
   const [documentar, setDocumentar] = useState<ConfirmacionUbicacion | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const conPaso = useMemo(() => filas.map(f => ({ f, paso: pasoDe(f) })), [filas]);
-  const porHacer = conPaso.filter(x => x.paso !== "confirmada");
-  const hechas = conPaso.filter(x => x.paso === "confirmada");
-  const mias = porHacer.filter(x => x.f.visitador_id === profile?.id);
+  const yo = profile?.id ?? null;
+  const esAuxiliar = profile?.role === "AUXILIAR";
+  const hoy = hoyISO();
+  const conPaso = useMemo(
+    () => filas.map(f => ({ f, paso: pasoDe(f), tarea: tareaDe(f, yo, esJefe) })),
+    [filas, yo, esJefe],
+  );
+  // Al jefe, «Por hacer» es todo lo que no está confirmado. A los demás, lo que les toca a ellos o
+  // lo suyo que espera a otro: la visita del auxiliar que el supervisor ya marcó ✗ pasa a sus
+  // «Hechas» (lo que falta es de él, ir al sitio).
+  const porHacer = conPaso.filter(x => esJefe ? x.paso !== "confirmada" : x.tarea !== null);
+  const hechas = conPaso.filter(x => esJefe ? x.paso === "confirmada" : x.tarea === null);
+  const tareas = porHacer.filter(x => x.tarea === "confirmar" || x.tarea === "documentar");
+  const mias = conPaso.filter(x => x.paso !== "confirmada" && x.f.visitador_id === yo);
   const lista = ver === "por_hacer" ? porHacer : hechas;
+  // Lo del auxiliar va aparte de lo propio, para que no se confunda de quién es la plata.
+  const deOtros = esJefe ? [] : lista.filter(x => x.f.visitador_id !== yo);
+  const propias = esJefe ? lista : lista.filter(x => x.f.visitador_id === yo);
+  const nombresDeOtros = [...new Set(deOtros.map(x => (x.f.visitador ?? "").toUpperCase()).filter(Boolean))];
+
+  // Para el jefe: las visitas del auxiliar que siguen sin confirmar, por quién las tiene que confirmar.
+  const delAuxiliar = useMemo(() => {
+    const m = new Map<string, { quien: string; de: Set<string>; n: number; masVieja: number }>();
+    for (const { f, paso } of conPaso) {
+      if (!f.lo_confirma_supervisor || paso !== "por_confirmar") continue;
+      const k = f.confirma_id ?? "";
+      if (!m.has(k)) m.set(k, { quien: f.confirma ?? "Sin supervisor: la confirman ustedes", de: new Set(), n: 0, masVieja: 0 });
+      const r = m.get(k)!;
+      r.n++;
+      r.de.add((f.visitador ?? "—").toUpperCase());
+      r.masVieja = Math.max(r.masVieja, diasEsperando(f.fecha_entrega, hoy));
+    }
+    return [...m.values()].sort((a, b) => b.n - a.n || b.masVieja - a.masVieja);
+  }, [conPaso, hoy]);
 
   // Lo de cada persona, para el jefe: cuánto confirmó, cuánto le falta.
   const porPersona = useMemo(() => {
@@ -126,19 +166,41 @@ export default function ConfirmarUbicacionView() {
 
   async function marcar(f: ConfirmacionUbicacion, resultado: "coincide" | "no_coincide") {
     if (procesando) return;
+    // La visita de otro (el auxiliar): la plata es de él, y si no coincide va él al sitio (D-095).
+    const deOtro = f.visitador_id !== yo;
+    const quien = (f.visitador ?? "quien hizo la visita").toUpperCase();
     const pregunta = resultado === "coincide"
       ? `¿Revisaste en el GPS que la ${f.placa ?? "moto"} durmió donde dijo el cliente? Esto no se puede cambiar después.`
-      : `¿La ${f.placa ?? "moto"} NO durmió donde dijo el cliente? Después tienes que ir al sitio real y documentarlo para que te paguen la visita.`;
+        + (deOtro ? ` Los ${fmtMoney(VALOR_VISITA)} de la visita son de ${quien}.` : "")
+      : deOtro
+        ? `¿La ${f.placa ?? "moto"} NO durmió donde dijo el cliente? Se le devuelve a ${quien} para que vaya al sitio real y lo documente. Esto no se puede cambiar después.`
+        : `¿La ${f.placa ?? "moto"} NO durmió donde dijo el cliente? Después tienes que ir al sitio real y documentarlo para que te paguen la visita.`;
     if (!window.confirm(pregunta)) return;
     setProcesando(f.contrato_id);
     try {
       const { error: e } = await confirmar(f.contrato_id, resultado);
       if (e) { aviso("No se pudo guardar: " + e); return; }
-      if (resultado === "no_coincide") setDocumentar(f);
-      else aviso(`Listo. Los ${fmtMoney(VALOR_VISITA)} de la visita van en tu nómina de esta semana.`);
+      if (resultado === "no_coincide") {
+        if (deOtro) aviso(`Listo. Se le devolvió a ${quien} para que vaya al sitio real y lo documente.`);
+        else setDocumentar(f);
+      } else {
+        aviso(deOtro
+          ? `Listo. Los ${fmtMoney(VALOR_VISITA)} de la visita van en la nómina de ${quien} de esta semana.`
+          : `Listo. Los ${fmtMoney(VALOR_VISITA)} de la visita van en tu nómina de esta semana.`);
+      }
     } finally {
       setProcesando(null);
     }
+  }
+
+  // El auxiliar le pide al supervisor que la confirme: se abre SU WhatsApp con el mensaje escrito y
+  // lo manda él. No guarda nada: la tarea ya le salió sola al supervisor al entregarse la moto.
+  function pedir(f: ConfirmacionUbicacion) {
+    const numero = normalizarWhatsapp(f.confirma_whatsapp);
+    const aQuien = nombreCorto(f.confirma) || "supervisor";
+    if (!numero) { aviso(`${aQuien.toUpperCase()} no tiene un WhatsApp válido en su usuario: pídesela en persona.`); return; }
+    if (!window.confirm(`¿Le escribes a ${aQuien.toUpperCase()} por WhatsApp para pedirle que confirme la ${f.placa ?? "moto"}?`)) return;
+    window.open(urlWaMe(numero, textoPedirConfirmacion(f, aQuien)), "_blank", "noopener");
   }
 
   function declarado(f: ConfirmacionUbicacion) {
@@ -165,37 +227,183 @@ export default function ConfirmarUbicacionView() {
     );
   }
 
-  function estado(f: ConfirmacionUbicacion, paso: PasoConfirmacion) {
+  function estado(f: ConfirmacionUbicacion, paso: PasoConfirmacion, tarea: TareaConfirmacion) {
     const base: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: "4px 8px", borderRadius: 999, whiteSpace: "nowrap" };
     if (paso === "confirmada") {
       return <span style={{ ...base, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
         {f.resultado === "no_coincide" ? "✓ Sitio documentado" : "✓ Coincide"} · {diaCorto(f.confirmada_en)}
       </span>;
     }
-    if (paso === "falta_sitio") return <span style={{ ...base, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>✗ Falta ir al sitio</span>;
-    return <span style={{ ...base, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>{fmtMoney(VALOR_VISITA)} esperando</span>;
+    const deOtro = f.visitador_id !== yo;
+    if (paso === "falta_sitio") {
+      return <span style={{ ...base, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
+        {!esJefe && deOtro ? "✗ Se le devolvió" : "✗ Falta ir al sitio"}
+      </span>;
+    }
+    const texto = tarea === "confirmar" && deOtro ? "⏳ Por confirmar"
+      : tarea === "esperar" ? "⏳ Esperando"
+      : `${fmtMoney(VALOR_VISITA)} esperando`;
+    return <span style={{ ...base, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>{texto}</span>;
+  }
+
+  const hace = (n: number) => n === 0 ? "desde hoy" : n === 1 ? "hace 1 día" : `hace ${n} días`;
+
+  // Quién la confirma, cuánto lleva esperando, y quién marcó qué: en las del auxiliar, para que se
+  // sepa siempre de dónde viene cada paso.
+  function rastroAuxiliar(f: ConfirmacionUbicacion, paso: PasoConfirmacion, tarea: TareaConfirmacion) {
+    if (!f.lo_confirma_supervisor) return null;
+    const visitador = (f.visitador ?? "—").toUpperCase();
+    const marco = (f.marco ?? "").toUpperCase();
+    const estilo: React.CSSProperties = { fontSize: 12, color: "var(--muted2)", minWidth: 0 };
+    if (paso === "por_confirmar") {
+      const n = diasEsperando(f.fecha_entrega, hoy);
+      if (tarea === "confirmar" && f.visitador_id !== yo) {
+        return <div style={estilo}>
+          {f.confirma_id ? "La moto es tuya: mírala en el GPS." : "La moto no tiene supervisor: la confirman ustedes en el GPS."}
+          {" "}Esperando {hace(n)}.
+        </div>;
+      }
+      return <div style={estilo}>
+        {f.confirma_id
+          ? <>La confirma: <strong style={{ textTransform: "uppercase" }}>{f.confirma ?? "—"}</strong> (supervisor de la moto)</>
+          : <>La confirma la administración (la moto no tiene supervisor)</>}
+        {" · "}esperando {hace(n)}
+      </div>;
+    }
+    if (paso === "falta_sitio") {
+      return <div style={{ ...estilo, color: "var(--bad-ink)" }}>
+        <strong style={{ textTransform: "uppercase" }}>{marco || "El supervisor"}</strong> marcó que NO duerme donde dijo el cliente
+        {f.visitador_id === yo ? ": ve al sitio real y documéntalo." : <>: le toca a <strong>{visitador}</strong> ir al sitio real.</>}
+      </div>;
+    }
+    if (f.resultado === "no_coincide") {
+      return <div style={estilo}>
+        <span style={{ textTransform: "uppercase" }}>{marco || "El supervisor"}</span> marcó ✗ y <span style={{ textTransform: "uppercase" }}>{visitador}</span> documentó el sitio real
+      </div>;
+    }
+    return marco ? <div style={estilo}>La confirmó <span style={{ textTransform: "uppercase" }}>{marco}</span></div> : null;
+  }
+
+  function botones(f: ConfirmacionUbicacion, tarea: TareaConfirmacion) {
+    const ocupado = procesando === f.contrato_id;
+    if (tarea === "confirmar") {
+      return (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button disabled={ocupado} onClick={() => marcar(f, "coincide")} style={btn("var(--ok-ink)", ocupado)}>
+            {ocupado ? "Guardando..." : "✓ Coincide"}
+          </button>
+          <button disabled={ocupado} onClick={() => marcar(f, "no_coincide")} style={btn("var(--bad-ink)", ocupado)}>
+            {ocupado ? "Guardando..." : "✗ No coincide"}
+          </button>
+        </div>
+      );
+    }
+    if (tarea === "documentar") {
+      return (
+        <div>
+          <button onClick={() => setDocumentar(f)} style={btn("var(--accent-ink)", false)}>📍 Documentar el sitio real</button>
+        </div>
+      );
+    }
+    if (tarea === "esperar") {
+      const aQuien = (nombreCorto(f.confirma) || "").toUpperCase();
+      if (!f.confirma_id) return <div style={{ fontSize: 12, color: "var(--muted)" }}>Pídesela al administrador en persona.</div>;
+      if (!normalizarWhatsapp(f.confirma_whatsapp)) {
+        return <div style={{ fontSize: 12, color: "var(--muted)" }}>{aQuien || "El supervisor"} no tiene WhatsApp en su usuario: pídesela en persona.</div>;
+      }
+      return (
+        <div>
+          <button onClick={() => pedir(f)} style={btn("var(--accent-ink)", false)}>📲 Pedírsela a {aQuien}</button>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  function fila({ f, paso, tarea }: { f: ConfirmacionUbicacion; paso: PasoConfirmacion; tarea: TareaConfirmacion }) {
+    const deOtro = f.visitador_id !== yo;
+    return (
+      <ItemLista
+        key={f.contrato_id}
+        placa={f.placa ?? undefined}
+        grupo={f.grupo}
+        titulo={f.cliente}
+        rielColor={RIEL[paso]}
+        subtitulo={<>
+          Visita del {diaCorto(f.visita_fecha)} · entregada el {diaCorto(f.fecha_entrega)}
+          {/* Al supervisor, el título del recuadro ya dice de quién son; el nombre se repite solo si
+              hay más de un auxiliar y hace falta saber cuál. */}
+          {(esJefe || (deOtro && nombresDeOtros.length > 1)) && <> · <span style={{ textTransform: "uppercase" }}>{f.visitador ?? "—"}</span></>}
+        </>}
+        right={estado(f, paso, tarea)}
+        extra={
+          <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text)", minWidth: 0 }}>{declarado(f)}</div>
+            {sitioReal(f)}
+            {rastroAuxiliar(f, paso, tarea)}
+            {paso === "confirmada" && f.confirmada_en && (
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                {fmtMoney(VALOR_VISITA)} en la nómina{deOtro ? <> de <span style={{ textTransform: "uppercase" }}>{f.visitador ?? "—"}</span></> : null} de {semanaDePago(f.confirmada_en)}
+              </div>
+            )}
+            {botones(f, tarea)}
+          </div>
+        }
+      />
+    );
   }
 
   const plataEsperando = mias.length * VALOR_VISITA;
+  // Las del auxiliar que le toca confirmar a este supervisor (para el encabezado, sin importar la pestaña).
+  const otrasPorConfirmar = esJefe ? [] : tareas.filter(x => x.f.visitador_id !== yo);
+  const nombresPorConfirmar = [...new Set(otrasPorConfirmar.map(x => (x.f.visitador ?? "").toUpperCase()).filter(Boolean))];
+  const tituloCaja: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "var(--muted2)", letterSpacing: 0.4, textTransform: "uppercase" };
 
   return (
-    <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+    // minmax(0, 1fr): sin esto, el nombre largo de un cliente (va en una sola línea) ensancha la
+    // columna y todas las tarjetas se salen del celular.
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div style={{ ...card, display: "grid", gap: 8 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>📍 Confirmar ubicación</div>
         <div style={{ fontSize: 13, color: "var(--muted2)" }}>
           {esJefe
-            ? "Las visitas de todo el equipo, de las motos entregadas desde el 19-nov. Cada quien confirma las suyas."
-            : mias.length > 0
-              ? <>Tienes <strong>{mias.length}</strong> por confirmar · <strong>{fmtMoney(plataEsperando)}</strong> esperando</>
-              : "No tienes visitas por confirmar."}
+            ? "Las visitas de todo el equipo, de las motos entregadas desde el 19-nov. Cada quien confirma las suyas; las del auxiliar, el supervisor de la moto."
+            : tareas.length > 0
+              ? <>Tienes <strong>{tareas.length}</strong> por hacer{mias.length > 0 && <> · <strong>{fmtMoney(plataEsperando)}</strong> tuyos esperando</>}</>
+              : mias.length > 0
+                ? <>No tienes nada por hacer · <strong>{fmtMoney(plataEsperando)}</strong> esperando a que el supervisor confirme</>
+                : "No tienes visitas por confirmar."}
         </div>
-        {!esJefe && (
+        {!esJefe && (esAuxiliar ? (
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            Tus visitas las confirma en el GPS el supervisor de cada moto: tú no marcas nada. Si se demora,
+            pídesela con el botón. Si marca que no coincide, te vuelve a salir para que vayas al sitio real
+            y lo documentes: ese día ganas los {fmtMoney(VALOR_VISITA)} de la visita.
+          </div>
+        ) : (
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
             Mira en el GPS dónde durmió la moto y márcalo. Si no coincide, ve al sitio real y documéntalo:
             ese día ganas los {fmtMoney(VALOR_VISITA)} de la visita.
+            {nombresPorConfirmar.length > 0 && <>
+              {" "}Las de <strong>{nombresPorConfirmar.join(", ")}</strong> van aparte: las miras tú porque la moto
+              es tuya, pero la plata es de él, y si no coincide va él al sitio.
+            </>}
           </div>
-        )}
+        ))}
       </div>
+
+      {esJefe && delAuxiliar.length > 0 && (
+        <div style={{ ...card, display: "grid", gap: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Las del auxiliar que esperan confirmación</div>
+          {delAuxiliar.map(d => (
+            <div key={d.quien} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, fontSize: 12, minWidth: 0 }}>
+              <span style={{ fontWeight: 600, textTransform: "uppercase", color: "var(--text)", flex: "1 1 140px", minWidth: 0 }}>{d.quien}</span>
+              <span style={{ color: "var(--warn-ink)" }}>⏳ {d.n} de {[...d.de].join(", ")}</span>
+              <span style={{ color: "var(--muted2)" }}>la más vieja {hace(d.masVieja)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {esJefe && porPersona.length > 0 && (
         <div style={{ ...card, display: "grid", gap: 8 }}>
@@ -228,53 +436,25 @@ export default function ConfirmarUbicacionView() {
         <div style={{ ...card, color: "var(--muted)", fontSize: 13 }}>
           {ver === "por_hacer" ? "Nada por confirmar." : "Todavía no hay confirmaciones."}
         </div>
+      ) : deOtros.length === 0 ? (
+        <ListBox isMobile={isMobile}>{lista.map(fila)}</ListBox>
       ) : (
-        <ListBox isMobile={isMobile}>
-          {lista.map(({ f, paso }) => {
-            const mia = f.visitador_id === profile?.id;
-            const ocupado = procesando === f.contrato_id;
-            return (
-              <ItemLista
-                key={f.contrato_id}
-                placa={f.placa ?? undefined}
-                grupo={f.grupo}
-                titulo={f.cliente}
-                rielColor={RIEL[paso]}
-                subtitulo={<>
-                  Visita del {diaCorto(f.visita_fecha)} · entregada el {diaCorto(f.fecha_entrega)}
-                  {esJefe && <> · <span style={{ textTransform: "uppercase" }}>{f.visitador ?? "—"}</span></>}
-                </>}
-                right={estado(f, paso)}
-                extra={
-                  <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: "var(--text)", minWidth: 0 }}>{declarado(f)}</div>
-                    {sitioReal(f)}
-                    {paso === "confirmada" && f.confirmada_en && (
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                        {fmtMoney(VALOR_VISITA)} en la nómina de {semanaDePago(f.confirmada_en)}
-                      </div>
-                    )}
-                    {mia && paso === "por_confirmar" && (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button disabled={ocupado} onClick={() => marcar(f, "coincide")} style={btn("var(--ok-ink)", ocupado)}>
-                          {ocupado ? "Guardando..." : "✓ Coincide"}
-                        </button>
-                        <button disabled={ocupado} onClick={() => marcar(f, "no_coincide")} style={btn("var(--bad-ink)", ocupado)}>
-                          {ocupado ? "Guardando..." : "✗ No coincide"}
-                        </button>
-                      </div>
-                    )}
-                    {mia && paso === "falta_sitio" && (
-                      <div>
-                        <button onClick={() => setDocumentar(f)} style={btn("var(--accent-ink)", false)}>📍 Documentar el sitio real</button>
-                      </div>
-                    )}
-                  </div>
-                }
-              />
-            );
-          })}
-        </ListBox>
+        <>
+          {/* minmax(0, 1fr) también acá: cada recuadro es su propia cuadrícula y sin esto el nombre
+              largo del cliente la estiraba a 451 px en un celular de 375 (vista del supervisor, 24-nov). */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 8, minWidth: 0 }}>
+            <div style={tituloCaja}>
+              De {nombresDeOtros.join(", ")} · {ver === "por_hacer" ? "te toca confirmarlas" : "ya las marcaste"} · se le pagan a él
+            </div>
+            <ListBox isMobile={isMobile}>{deOtros.map(fila)}</ListBox>
+          </div>
+          {propias.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 8, minWidth: 0 }}>
+              <div style={tituloCaja}>Tus visitas</div>
+              <ListBox isMobile={isMobile}>{propias.map(fila)}</ListBox>
+            </div>
+          )}
+        </>
       )}
 
       {esJefe && viejas.length > 0 && (

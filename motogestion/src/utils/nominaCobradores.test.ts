@@ -581,6 +581,47 @@ describe("visitas: se pagan al confirmar dónde duerme la moto (entregas desde e
     const r = sem("2026-11-09", "2026-11-15", [entregada("2026-11-19")]);
     expect(r.visitasPorConfirmar).toHaveLength(0);
   });
+
+  // D-095 (24-nov-2026): la visita del auxiliar la confirma el supervisor de la moto. La plata sigue
+  // siendo de quien la hizo, y el renglón dice quién marcó.
+  describe("la visita del auxiliar: la marca otro, se le paga a él", () => {
+    const nombresPorId = new Map([[LUMAR, "Johan Prueba"], ["BRANDON", "Brandon Prueba"], ["ADMIN1", "Admin Prueba"]]);
+    const semN = (contratos: ContratoNomina[], nombres = nombresPorId) =>
+      nominaSemanaDetallada({ desde: "2026-11-23", hasta: "2026-11-29", motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+        pagos: [], contratos, visitas: [visita], nombresPorId: nombres });
+
+    it("✓ la marcó el supervisor: se le paga a quien hizo la visita y el renglón nombra al supervisor", () => {
+      const v = visitasDe(semN([entregada("2026-11-19", { ubicacion_moto_resultado: "coincide",
+        ubicacion_confirmada_en: "2026-11-24T14:00:00+00:00", ubicacion_moto_validada_por: "BRANDON" })]));
+      expect(v).toHaveLength(1);
+      expect(v[0].cobradorId).toBe(LUMAR);
+      expect(v[0].valor).toBe(VALOR_VISITA);
+      expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: BRANDON PRUEBA confirmó dónde duerme la moto el 24 de nov");
+    });
+
+    it("✗ la marcó el supervisor y quien hizo la visita documentó el sitio: los dos nombres, y se le paga a él", () => {
+      const v = visitasDe(semN([entregada("2026-11-19", { ubicacion_moto_resultado: "no_coincide",
+        ubicacion_confirmada_en: "2026-11-26T16:00:00+00:00", ubicacion_moto_validada_por: "BRANDON",
+        guardado_lugar: { por: LUMAR } })]));
+      expect(v).toHaveLength(1);
+      expect(v[0].cobradorId).toBe(LUMAR);
+      expect(v[0].fecha).toBe("2026-11-26");
+      expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: BRANDON PRUEBA marcó que no duerme ahí y JOHAN PRUEBA documentó el sitio real el 26 de nov");
+    });
+
+    it("sin la lista de nombres no se inventa a nadie: «la administración» y «quien hizo la visita»", () => {
+      const v = visitasDe(semN([entregada("2026-11-19", { ubicacion_moto_resultado: "no_coincide",
+        ubicacion_confirmada_en: "2026-11-26T16:00:00+00:00", ubicacion_moto_validada_por: "ADMIN1",
+        guardado_lugar: { por: LUMAR } })], new Map()));
+      expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: LA ADMINISTRACIÓN marcó que no duerme ahí y QUIEN HIZO LA VISITA documentó el sitio real el 26 de nov");
+    });
+
+    it("lo marcó quien hizo la visita: el texto queda igual que antes, sin nombres", () => {
+      const v = visitasDe(semN([entregada("2026-11-19", { ubicacion_moto_resultado: "coincide",
+        ubicacion_confirmada_en: "2026-11-24T14:00:00+00:00", ubicacion_moto_validada_por: LUMAR })]));
+      expect(v[0].porque).toBe("Visita del 16 de nov, entregada el 19 de nov: confirmó dónde duerme la moto el 24 de nov");
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

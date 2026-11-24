@@ -33,6 +33,8 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
   // ve el dato del sitio cuando ya quedó confirmado (le sirve si tiene que recogerla). ADMIN y
   // ADMIN_PRINCIPAL siguen viendo el recuadro como siempre. Si la entrega no tiene visita con quién
   // la hizo, sigue siendo del supervisor: eso lo dice la base (`confirma_el_visitador`, mig 225).
+  // Las visitas del auxiliar (D-095, mig 226) también van por el módulo: ahí las confirma el
+  // supervisor de la moto, en un recuadro aparte. Acá tampoco le sale la tarea.
   const esJefe = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const entregaNueva = !!contrato.fecha_entrega && contrato.fecha_entrega.slice(0, 10) >= DESDE_CONFIRMA_VISITADOR;
   const [delVisitador, setDelVisitador] = useState<boolean | null>(entregaNueva && !esJefe ? null : false);
@@ -100,7 +102,7 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
         )}
         {declaro === "No" && <>El cliente declaró que la guarda en: <strong>{dondeDeclarado || "otro lugar (sin especificar)"}</strong>.</>}
         {!declaro && (delVisitador
-          ? <span style={{ color: "var(--muted)" }}>Lo confirmó quien hizo la visita{contrato.ubicacion_moto_resultado === "coincide" ? ": duerme donde dijo el cliente." : "."}</span>
+          ? <span style={{ color: "var(--muted)" }}>Ya quedó confirmado en «📍 Confirmar ubicación»{contrato.ubicacion_moto_resultado === "coincide" ? ": duerme donde dijo el cliente." : "."}</span>
           : <span style={{ color: "var(--muted)" }}>Sin declaración de guardado en la visita — verifica en el GPS dónde duerme la moto.</span>)}
       </div>
 

@@ -546,7 +546,9 @@ export default function ReportesView({ onNavigate }: Props) {
       rodadas: rodadasNomina,
       semanaCerrada: semanaCerradaNomina,
       asignaciones: tramosAsignacion,
-  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, rodadoTodoEl, semanaCerradaNomina, tramosAsignacion]);
+      // Para decir quién confirmó la visita cuando no es quien la hizo (D-095).
+      nombresPorId: new Map(subadmins.map(s => [s.id, s.nombre])),
+  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, rodadoTodoEl, semanaCerradaNomina, tramosAsignacion, subadmins]);
   const nominaDetalle = useMemo(() => {
     if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [], visitasPorConfirmar: [] } as ReturnType<typeof nominaSemanaDetallada>;
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });

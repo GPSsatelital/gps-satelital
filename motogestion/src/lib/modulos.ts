@@ -41,5 +41,11 @@ export const ACCESOS_SUGERIDOS: Record<string, ViewKey[]> = {
   // alimenta de la función mis_visitas_asignadas() (mig 076), que solo devuelve nombre,
   // dirección y teléfono del titular y del acompañante.
   VISITADOR: ["mis_visitas"],
+  AUXILIAR: ["motos", "contratos", "taller", "mis_visitas"],
   SOCIO: [],
 };
+
+// Lo ÚNICO que abre el auxiliar administrativo (D-095), sin importar su lista de accesos: Johan
+// llega de SUBADMIN con accesos viejos que no le sirven. Motos, Contratos y Taller le salen en
+// versión de solo mirar; «Confirmar ubicación» porque confirma las entregas de SUS visitas (D-094).
+export const VISTAS_AUXILIAR: ViewKey[] = ["motos", "contratos", "taller", "mis_visitas", "confirmar_ubicacion", "configuracion"];

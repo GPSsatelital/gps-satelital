@@ -5,7 +5,9 @@ import { calcularPuede, type AccionesUsuario } from "../lib/acciones";
 
 // VISITADOR: personas contratadas SOLO para hacer visitas domiciliarias. No ve la ficha del
 // cliente — una función de la BD le devuelve solo nombre, dirección y teléfono (mig 076).
-export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO" | "VISITADOR";
+// AUXILIAR (D-095, mig 226): auxiliar administrativo. Mira tres listas sin plata (motos, contratos,
+// taller) y hace las visitas que le asignen. La base lo deja fuera de todas las tablas.
+export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO" | "VISITADOR" | "AUXILIAR";
 // El grupo del socio: uno de la tabla `grupos` (mig 217). No es una lista fija: la crea el dueño.
 export type GrupoSocio = string;
 

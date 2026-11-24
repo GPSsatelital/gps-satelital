@@ -1622,3 +1622,62 @@ avisos, sin cambios, porque ese día todavía no se había entregado ninguna). L
 moviera de semana, la visita se pagaría dos veces. Es cifra interna del equipo: no va a ZALA (D-093).
 **Queda abierto:** si el administrador descubre que lo confirmado no era verdad, qué pasa con el pago (hoy la visita
 sigue pagada).
+
+### D-095 · 24-nov-2026 · Johan pasa a un tipo de usuario nuevo, «auxiliar administrativo», que solo hace lo que le piden
+**De dónde sale:** el dueño, el 23 y 24-nov. Johan será un asistente administrativo «con pocas secciones al inicio»,
+con su propio usuario para que **todo lo que haga quede registrado**. Hoy es SUBADMIN con 0 motos, y las entregas se
+hacen usando el usuario del supervisor.
+**Qué se decidió (pregunta por pregunta con el dueño):**
+1. **Rol nuevo, «auxiliar administrativo».** No es un SUBADMIN recortado: recortarle las pantallas no recorta la base,
+   que le seguiría dejando leer las fichas completas de los clientes. Por eso mismo el VISITADOR nació aparte
+   (migración 076).
+2. **Lo que ve:**
+   - Motos: todas, en lista con buscador, sin totales ni cantidades.
+   - Contratos: placa, cliente, fecha de inicio y fecha de fin; sin plata y sin editar nada.
+   - Taller: las motos en taller y por liquidación, solo ver.
+   - Mis visitas: las que le asignen.
+   - Inmovilizaciones: solo las motos que tengan un pedido para él.
+   - Sus referidos se le siguen contando como siempre.
+3. **Lo que hace, solo cuando se lo piden.** El supervisor de esa moto, el ADMIN o el ADMIN_PRINCIPAL le piden:
+   - entregar la que sale del taller a su cliente, la retenida que ya pagó o la prestada de reemplazo;
+   - o recibir una moto.
+   Solo en esa moto se le prende la opción. La entrega a cliente nuevo la hace solo el admin.
+4. **Lo que no hace:**
+   - cobrar ni registrar pagos;
+   - convenios ni rodar el tiempo (eso lo deja listo antes el supervisor);
+   - recoger por mora ni liquidar;
+   - aprobar visitas;
+   - ver documentos de clientes;
+   - tarjetas y llaves (por ahora).
+5. **Su visita la confirma el supervisor de esa moto**, con su propio acceso. A Johan le sale «te falta confirmar la
+   ABC12D · la tiene asignada BRANDON». La visita se le paga a Johan en la semana en que el supervisor confirme (su
+   única excepción a la D-094).
+6. **En cada movimiento quedan dos nombres:** quien lo pidió y quien lo hizo. Quien tiene la moto en la mano responde
+   por ella.
+7. **Quedan para después:**
+   - el acta de entrega y recibo, que sale junto con el taller bien hecho;
+   - la lista diaria de lo que hizo («no por ahora»).
+**Cómo se construye:** en 3 fases (1: el rol y lo que ve; 2: la confirmación de sus visitas; 3: los pedidos de entrega
+y recibo). En la base, el rol nuevo se cierra con políticas *restrictivas* en todo lo que no es suyo: lo que ya existe
+para los demás roles no se toca. Es cifra y estado interno del equipo: no va a ZALA (D-093).
+
+### D-095 (ajuste) · 24-nov-2026 · Cómo se confirma la visita del auxiliar
+**De dónde sale:** el dueño, el 24-nov en la tarde, al ver el plan de la fase 2. Primero había dicho que Johan
+viera «solo las suyas» en «📍 Confirmar ubicación»; lo corrigió: «no puede hacerlo él mismo, siempre debe tener la
+ayuda de alguien que tenga acceso a verificar el GPS de esa moto». Y recordó la regla base: «siempre tener separado
+todo y saber siempre de dónde vienen».
+**Qué se decidió:**
+1. **El auxiliar no marca ✓/✗.** La confirma el supervisor de esa moto; si la moto no tiene supervisor, el ADMIN o el
+   ADMIN_PRINCIPAL. Lo hace cumplir la base (mig 226), no solo la pantalla.
+2. **Al supervisor le salen en un recuadro aparte** de sus propias visitas («De JOHAN · te toca confirmarlas · se le
+   pagan a él»), dentro del mismo módulo. No entran a su lista vieja de 5 por día.
+3. **✓ → queda confirmada** y a Johan se le paga en esa semana. **✗ → se le devuelve a Johan**, que va al sitio real
+   y lo documenta; ahí queda confirmada y se le paga. Al supervisor no se le abre la ventana del sitio.
+4. **Johan ve a quién espera y desde cuándo**, y tiene «📲 Pedírsela a …», que abre SU WhatsApp con el mensaje
+   escrito (es entre compañeros, no a clientes; no guarda nada). Su número rojo cuenta solo lo que él tiene que hacer
+   (ir al sitio tras un ✗). El jefe ve cuántas de Johan tiene pendientes cada supervisor.
+5. **«¿Seguro?» en cada botón** (✓, ✗, pedir, guardar el sitio).
+6. **La nómina nombra a quien marcó** cuando no es quien hizo la visita («BRANDON confirmó dónde duerme la moto el
+   …»; «BRANDON marcó que no duerme ahí y JOHAN documentó el sitio real el …»).
+**Lo que se descartó:** guardar la «película» de cada paso en una tabla aparte (el dueño: no hace falta para esto).
+Que «Actualizar lugar» borre el sitio anterior quedó anotado en PENDIENTES, aparte.

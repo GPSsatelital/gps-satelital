@@ -58,6 +58,8 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
     if (!profile) { setError("Sesión no válida."); return; }
     if (!ubicacion) { setError("Falta la ubicación GPS del lugar de guardado. Toca 'Reintentar ubicación'."); return; }
     if (!direccion.trim()) { setError("Indica la dirección o referencia del lugar."); return; }
+    // Desde «📍 Confirmar ubicación» esto deja la visita confirmada y pagada: se pregunta antes (D-095).
+    if (comoVisitador && !window.confirm(`¿Estás en el sitio real donde duerme la ${placa || "moto"}? Al guardar queda confirmada la visita.`)) return;
     setError(null);
     setGuardando(true);
     try {
@@ -77,8 +79,8 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
       // El VISITADOR no tiene UPDATE sobre `contratos` (mig 076) — a propósito: no debe poder
       // tocar un contrato. Va por una función acotada (mig 077) que valida que él haya hecho
       // esa visita y que solo escribe `guardado_lugar`. Los demás roles siguen por el camino
-      // de siempre.
-      const errGuardar = profile.role === "VISITADOR" || comoVisitador
+      // de siempre. El AUXILIAR (mig 226) tampoco toca contratos: va por la misma función.
+      const errGuardar = profile.role === "VISITADOR" || profile.role === "AUXILIAR" || comoVisitador
         ? (await supabase.rpc("registrar_guardado_visitador", { p_contrato_id: contratoId, p_datos: datos })).error?.message ?? null
         : (await registrarGuardadoMoto(contratoId, datos, profile.id)).error;
       if (errGuardar) { setError("Error al guardar: " + errGuardar); return; }

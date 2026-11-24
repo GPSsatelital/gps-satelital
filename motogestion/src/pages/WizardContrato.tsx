@@ -205,7 +205,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const { liquidaciones } = useLiquidaciones();
   const liqPendienteDelCliente = useMemo(() => {
     if (!form.cliente_id) return null;
-    const abiertas = liquidaciones.filter(l => l.cliente_id === form.cliente_id && l.estado !== "cerrada");
+    const abiertas = liquidaciones.filter(l => l.cliente_id === form.cliente_id && l.estado !== "cerrada" && l.estado !== "anulada");
     if (abiertas.length === 0) return null;
     // Si hay varias, manda la que lo deje debiendo más: es la que decide si se bloquea.
     return abiertas.sort((a, b) => a.saldo_final - b.saldo_final)[0];

@@ -267,8 +267,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
 
     const c = contratoSeleccionado;
     const rodadoC = rodadosPorDeuda.find(r => r.contrato_id === c.id) ?? null;
-    // La liquidación abierta de ESTE contrato (si la hay). "Cerrada" no cuenta: esa ya terminó.
-    const liqAbierta = liquidaciones.find(l => l.contrato_id === c.id && l.estado !== "cerrada") ?? null;
+    // La liquidación abierta de ESTE contrato (si la hay). "Cerrada" ya terminó y "anulada" se deshizo.
+    const liqAbierta = liquidaciones.find(l => l.contrato_id === c.id && l.estado !== "cerrada" && l.estado !== "anulada") ?? null;
     const esDiario = c.forma_pago === "Diario";
     const ahorro = ahorroTotal(c);
     const ahorroMeta = c.base_inicial ?? 510000;

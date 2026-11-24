@@ -142,14 +142,17 @@ export function useLiquidaciones() {
     iniciadaPor: string,
     ahorroAcumulado: number
   ) {
-    // Guarda contra doble-inicio: si ya hay una liquidación abierta (no cerrada) para este
-    // contrato, no se crea otra — evitaría una orden de taller duplicada y dos liquidaciones
+    // Guarda contra doble-inicio: si ya hay una liquidación abierta (ni cerrada ni anulada) para
+    // este contrato, no se crea otra — evitaría una orden de taller duplicada y dos liquidaciones
     // compitiendo por el mismo contrato/moto. El usuario debe continuar la existente.
+    // La anulada no cuenta: anular existe justo para destrabar el contrato (mig 155). Sin esto,
+    // 11 contratos quedaron sin poder liquidarse de nuevo (IGJ72I, 24-nov).
     const { data: abierta } = await supabase
       .from("liquidaciones")
       .select("id, numero, estado")
       .eq("contrato_id", contratoId)
       .neq("estado", "cerrada")
+      .neq("estado", "anulada")
       .limit(1);
     if (abierta && abierta.length > 0) {
       return { error: `Ya existe una liquidación en curso para este contrato (${abierta[0].numero} — ${abierta[0].estado}). Continúala en el módulo de Liquidaciones en vez de iniciar otra.` };

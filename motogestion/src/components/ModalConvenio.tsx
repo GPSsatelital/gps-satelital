@@ -605,7 +605,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
         </div>
 
         <div ref={cuerpoRef} onScroll={medirScroll}
-          style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: esCelular ? "14px 16px" : "16px 24px", display: "grid", gap: 16, alignContent: "start" }}>
+          style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: esCelular ? "14px 16px" : "16px 24px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, alignContent: "start" }}>
 
         {verificando || (!queEntra && !errorQueEntra) ? (
           <div style={{ color: "var(--muted)", fontSize: 14 }}>Cargando datos del contrato...</div>
@@ -619,8 +619,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
           </div>
         ) : (
           <>
+            {/* minmax(0, 1fr) en cada columna: sin eso, una descripción larga de deuda (va en una sola
+                línea, «Saldo de apertura (migración RASTREADOR…)») estiraba la columna a 620 px y en el celular
+                la ventana se salía por la derecha (EXT59H, 24-nov). */}
             <div style={{ display: "grid", gridTemplateColumns: esCelular ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: esCelular ? 16 : 24, alignItems: "start" }}>
-            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
             <div>
               <div style={labelStyle}>Motivo del convenio</div>
               <textarea
@@ -791,7 +794,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             )}
 
             </div>
-            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
             <div>
               <div style={labelStyle}>Fijar por</div>
               <div style={{ display: "flex", gap: 8 }}>

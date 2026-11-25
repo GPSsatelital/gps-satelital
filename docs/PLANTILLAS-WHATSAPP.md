@@ -287,6 +287,56 @@ poder acreditarle el pago. Club Moteros Cartagena.
 
 ---
 
+## Los tres cobros en tono formal — 24-nov-2026 (D-096, mig 228)
+
+Fredy pidió que los cobros suenen más formales, y que **día de pago** y **gabela** ya no digan cuánto
+debe el cliente. **Mora sí lo dice.** ZALA registró tres plantillas nuevas y Meta las aprobó el 24-nov
+a las 18:28 (UTILITY). Las de antes (`cobro_dia_pago_v1`, `cobro_gabela_v1`, `cobro_mora_v2`) siguen
+aprobadas: para volver atrás basta con volver a ponerlas en la fila, y la mig 228 trae ese SQL.
+Los textos de esas tres claves en la sección de abajo quedan como historial.
+
+**1 · `dia_pago` → `cobro_dia_pago_v2`** · variables: nombre · placa
+```
+Cordial saludo, {nombre}. Bendiciones.
+Le recordamos que hoy corresponde el pago de la cuota de su moto {placa}.
+Puede realizarlo en nuestra oficina o por transferencia. Si paga por transferencia, por favor envíenos por este medio la foto del comprobante con la placa y su nombre.
+Si ya realizó el pago, le agradecemos su puntualidad.
+Atentamente,
+Club Moteros Cartagena
+```
+
+**2 · `gabela` → `cobro_gabela_v2`** · variables: nombre · placa · dia_pago
+```
+Cordial saludo, {nombre}. Bendiciones.
+Le informamos que ayer venció el plazo de pago de la cuota de su moto {placa}. Hoy cuenta con un día de gracia para ponerse al día y evitar que su cuenta entre en mora.
+Le recordamos que sus pagos se realizan {dia_pago}. El día de gracia es un margen para completar el pago, no una extensión del plazo.
+Si ya realizó el pago, por favor envíenos el comprobante con la placa y su nombre para registrarlo de inmediato.
+Atentamente,
+Club Moteros Cartagena
+```
+
+**3 · `mora` → `cobro_mora_v3`** · variables: nombre · placa · dias · vencida · valor · dia_pago
+```
+Cordial saludo, {nombre}. Bendiciones.
+Le informamos que la cuenta de su moto {placa} se encuentra en mora. Su último pago registrado fue hace {dias} y la cuota lleva {vencida} vencida. El saldo pendiente a hoy es de {valor}.
+Le recordamos que sus pagos se realizan {dia_pago} y deben quedar cubiertos ese mismo día. Mientras la cuenta permanezca en mora, el vehículo puede ser apagado a distancia y retirado para su recolección.
+Le solicitamos ponerse al día a la mayor brevedad. Si ya realizó el pago, envíenos el comprobante por este medio; si necesita acordar una fecha de pago, escríbanos y con gusto lo atendemos.
+Atentamente,
+Club Moteros Cartagena
+```
+
+**Lo que cambia de la voz de septiembre:** sale el 🏍️ del día de pago (la regla del emoji de
+arriba ya no aplica a ese mensaje), la despedida «Quedamos atentos» pasa a «Atentamente, Club Moteros
+Cartagena», y se dice «hoy» a secas. La gabela ya no «ofrece» el día: avisa que lo tiene.
+
+**Por qué no hubo que tocar los botones:** el botón toma de la fila la lista `variables` y manda solo
+esas (`ordenarVariables`); el valor que el Panel Hoy y Cobro Diario siguen calculando no se usa. Lo
+único que se cambió en la app fueron los comodines que ofrece Configuración, para que nadie vuelva a
+meter `{valor}` en estos dos textos: dentro de las 24 h el cliente leería algo distinto de lo que
+aprobó Meta.
+
+---
+
 ## Los textos con la voz real — versión 2 (8-sep, tras leer conversaciones reales)
 
 **Regla del dueño (8-sep, noche): siempre de USTED, con respeto** — nunca tutear. Voz de empresa,
@@ -468,9 +518,9 @@ de 24 h.
 
 | Nuestra clave | Plantilla en Meta | Variables, en orden |
 |---|---|---|
-| `dia_pago` | `cobro_dia_pago_v1` | nombre · placa · valor |
-| `gabela` | `cobro_gabela_v1` | nombre · placa · valor · dia_pago |
-| `mora` | `cobro_mora_v1` | nombre · placa · dias · vencida · valor · dia_pago |
+| `dia_pago` | `cobro_dia_pago_v2` (desde el 24-nov; antes `_v1`) | nombre · placa |
+| `gabela` | `cobro_gabela_v2` (desde el 24-nov; antes `_v1`) | nombre · placa · dia_pago |
+| `mora` | `cobro_mora_v3` (desde el 24-nov; antes `_v2`, y `_v1` estaba ocupado en Meta) | nombre · placa · dias · vencida · valor · dia_pago |
 | `recoleccion` | `aviso_recoleccion_v1` | nombre · placa · dias · vencida · valor |
 | `moto_retenida` | `moto_retenida_v1` | nombre · placa |
 | `acuse_comprobante` | `acuse_comprobante_v1` | nombre · valor · placa |

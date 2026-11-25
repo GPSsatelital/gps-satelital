@@ -1681,3 +1681,24 @@ todo y saber siempre de dónde vienen».
    …»; «BRANDON marcó que no duerme ahí y JOHAN documentó el sitio real el …»).
 **Lo que se descartó:** guardar la «película» de cada paso en una tabla aparte (el dueño: no hace falta para esto).
 Que «Actualizar lugar» borre el sitio anterior quedó anotado en PENDIENTES, aparte.
+
+### D-096 · 24-nov-2026 · Los tres cobros pasan a tono formal, y día de pago y gabela ya no dicen la cifra
+**De dónde sale:** pedido de ZALA del 24-nov, que viene de Fredy: que los cobros suenen más formales, y que el de día
+de pago y el de gabela no digan cuánto debe el cliente. El de mora sí la sigue diciendo. ZALA registró tres plantillas
+nuevas y Meta las aprobó el 24-nov a las 18:28 (UTILITY).
+**Qué se decidió:**
+1. `dia_pago` pasa a `cobro_dia_pago_v2` (variables: nombre · placa), `gabela` a `cobro_gabela_v2` (nombre · placa ·
+   dia_pago) y `mora` a `cobro_mora_v3` (las mismas 6 de antes). El texto de cada una va palabra por palabra como lo
+   mandó ZALA: es el que tiene Meta y el que sale dentro de la ventana de 24 h. Migración 228.
+2. **Los botones no se tocan.** Cada botón toma de la fila de `mensajes_whatsapp` la lista de variables y manda solo
+   esas; el valor que el Panel Hoy y Cobro Diario siguen calculando simplemente no se usa.
+3. **Configuración deja de ofrecer `{valor}`** en día de pago y gabela. Si alguien lo metiera en el texto, dentro de
+   las 24 h el cliente leería algo distinto de lo que aprobó Meta.
+4. Con esto se dejan atrás tres detalles de la voz de septiembre (migs 135 y 139): el 🏍️ del día de pago, el cierre
+   «Quedamos atentos» y la gabela que «ofrece» el día. Meta ya aprobó los textos así: retocarlos obliga a sacar otra
+   versión y esperar otra aprobación.
+**Cómo volver atrás:** las plantillas viejas (`cobro_dia_pago_v1`, `cobro_gabela_v1`, `cobro_mora_v2`) siguen
+aprobadas y no se borran. El SQL para volver a ponerlas, con sus textos, está en la cabecera de la 228.
+**Lo que no cambia:** el aviso de recolección (`aviso_recoleccion_v1`), la moto retenida, el estado de cuenta, el
+cálculo de cuánto debe y la vitrina de ZALA. Las nuevas empiezan por `cobro_`, así que ZALA las sigue contando como
+cobro (un contacto al día, el horario y el freno de ráfaga, igual que antes).

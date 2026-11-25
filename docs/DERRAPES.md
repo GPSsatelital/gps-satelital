@@ -686,3 +686,35 @@ sabían de esa misma migración.
 porque otra sesión puede haber anotado algo de ella; (2) pasarle el revisor de choques entre letras de tabla y
 variables de cada bloque (está en la conversación del 24-nov, en `node -e`: se puede volver a escribir en un minuto);
 y (3) si hay pruebas que cambian quién está conectado, poner `request.jwt.claims` en `'{}'` antes de anotar.
+
+### 24-nov-2026 · La 227 falló al anotarse por la misma trampa de los claims que ya estaba resuelta
+**Lo que dije:** que la 227 estaba lista para correr.
+**Lo que era verdad:** la guarda y la prueba pasaron, pero `registrar_migracion` dio `22P02 invalid input syntax for
+type json`. La prueba entra como una persona de cada rol, y al deshacerse deja `request.jwt.claims` en `''`;
+`aplicada_por` los lee como json. Las migs 212, 215, 217 y 220 ya ponían `'{}'` antes de anotarse, y la memoria lo
+tenía escrito. Como todo iba en `begin … commit`, no quedó nada.
+**Quién lo cazó:** el editor de Supabase, en la primera corrida del dueño.
+**Qué lo evita ahora:** lo mismo que la entrada de la 226, punto 3. Toda prueba que simula usuarios termina con
+`perform set_config('request.jwt.claims', '{}', true);`.
+
+### 24-nov-2026 · Cuatro migraciones creían cerrar funciones con `revoke … from public`, y `anon` seguía entrando
+**Lo que se creía:** que `revoke execute … from public` dejaba una función solo para quien inicia sesión (migs 065,
+068, 076 y 117).
+**Lo que era verdad:** Supabase le da el permiso a `anon` **directo**, no a través de PUBLIC, cada vez que se crea una
+función. Seis funciones con llave maestra (SECURITY DEFINER) se podían llamar sin iniciar sesión, solo con la llave
+pública que va dentro de la app; tres de ellas ni siquiera tenían `revoke`. Lo cerró la mig 227.
+**Quién lo cazó:** la auditoría del 24-nov, midiendo con `has_function_privilege('anon', …)` en la base viva.
+**Qué lo evita ahora:** al crear o abrir una función se escribe `revoke execute … from public, anon` y luego el
+`grant` a quien sí. Y se comprueba con `has_function_privilege('anon', …)`, no leyendo el archivo.
+
+### 24-nov-2026 · Dije que «alguien» había cambiado las plantillas, y había sido la primera corrida de la 228
+**Lo que dije:** que la 228 no cambió nada porque «alguien lo hizo antes», y me puse a buscar qué sesión había sido.
+**Lo que era verdad:** la 228 corrió bien a las 19:09: las tres filas y su anotación tienen esa misma hora. El error
+que me trajo el dueño era de una segunda corrida, y la guarda hizo lo correcto. Pero su mensaje («estas filas no están
+como se esperaba») parecía decir otra cosa, y yo lo creí sin mirar el registro.
+**Por qué me equivoqué:** saqué la conclusión del texto del error y no del dato. El registro de migraciones lo
+resolvía en una línea (regla 4 de CLAUDE.md: antes de culpar, verificar con fechas).
+**Quién lo cazó:** la consulta de solo lectura que le pedí al dueño, en la columna `ultimas_migraciones`.
+**Qué lo evita ahora:** (1) ante un «no está como se esperaba», mirar primero `migraciones_aplicadas` y la hora del
+cambio; (2) la guarda de una migración revisa primero si ya está anotada y lo dice con todas las letras: «ya se corrió
+el …, no hace falta volver a correrla». La 228 ya lo hace.

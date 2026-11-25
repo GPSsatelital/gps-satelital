@@ -328,6 +328,9 @@ export default function ConfirmarUbicacionView() {
         placa={f.placa ?? undefined}
         grupo={f.grupo}
         titulo={f.cliente}
+        // En el celular la etiqueta de estado baja a su propio renglón: a la derecha se comía el
+        // ancho y el nombre del cliente salía «CLIEN…» (visto al hacer el manual, 24-nov).
+        tituloCompleto={isMobile}
         rielColor={RIEL[paso]}
         subtitulo={<>
           Visita del {diaCorto(f.visita_fecha)} · entregada el {diaCorto(f.fecha_entrega)}
@@ -335,9 +338,10 @@ export default function ConfirmarUbicacionView() {
               hay más de un auxiliar y hace falta saber cuál. */}
           {(esJefe || (deOtro && nombresDeOtros.length > 1)) && <> · <span style={{ textTransform: "uppercase" }}>{f.visitador ?? "—"}</span></>}
         </>}
-        right={estado(f, paso, tarea)}
+        right={isMobile ? undefined : estado(f, paso, tarea)}
         extra={
           <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+            {isMobile && <div style={{ minWidth: 0 }}>{estado(f, paso, tarea)}</div>}
             <div style={{ fontSize: 12, color: "var(--text)", minWidth: 0 }}>{declarado(f)}</div>
             {sitioReal(f)}
             {rastroAuxiliar(f, paso, tarea)}
